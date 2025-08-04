@@ -1,0 +1,88 @@
+# pyproject.toml
+[build-system]
+requires = [
+   "hatchling",
+   "versioningit",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyxarr"
+description = "a minimal and light-weight equivalent of xarray.DataArray"
+readme = "README.md"
+authors = [
+  {name = "Richard van Hees", email = "R.M.van.Hees@sron.nl"},
+]
+license = "Apache-2.0"
+requires-python = ">=3.12"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "h5py>=3.9",
+  "matplotlib>=3.7",
+  "Cartopy>0.21",
+  "numpy>=2.0",
+]
+
+[project.scripts]
+
+[project.urls]
+# homepage = "https://github.com/rmvanhees/moniplot"
+# documentation = "https://moniplot.readthedocs.io/en/latest/"
+# Source = "https://github.com/rmvanhees/moniplot"
+# Changelog = "https://github.com/rmvanhees/moniplot/HISTORY.rst"
+# "Issue tracker" = "https://github.com/rmvanhees/moniplot/issues"
+
+[tool.hatch.version]
+source = "versioningit"
+
+[tool.versioningit]
+
+[tool.versioningit.next-version]
+method = "smallest"
+
+[tool.versioningit.format]
+distance = "{next_version}.dev{distance}+{vcs}{rev}"
+dirty = "{base_version}+d{build_date:%Y%m%d}"
+distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "D",    # pydocstyle
+  "E",    # pycodestyle
+  "F",    # pyflakes
+  "I",    # isort
+  "N",    # pep8-naming
+  "W",    # pycodestyle
+  "ANN",  # flake8-annotations
+  "B",    # flake8-bugbear
+  "ISC",  # flake8-implicit-str-concat
+  "PGH",  # flake8-pie
+  "PYI",  # flake8-pyi
+  "Q",    # flake8-quotes
+  "SIM",  # flake8-simplify
+  "TID",  # flake8-tidy-imports
+  "TCH",  # flake8-type-checking
+  "NPY",  # NumPy-specific
+  "PERF", # Perflint
+  "RUF",  # Ruff Specific
+  "UP",   # pyupgrade
+]
+ignore = ["D203", "D213"]
+
+[lint.pydocstyle]
+convention = "pep257"
