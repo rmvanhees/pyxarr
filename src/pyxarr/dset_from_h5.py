@@ -72,39 +72,56 @@ def dset_from_h5(
             continue
 
         if len(h5_dset.dims[ii]) != 1:  # bug in some KMNI HDF5 files
-            print(f"h5_dset [{ds_name}] has incorrect dimensions")
-        else:
-            key = PurePath(h5_dset.dims[ii][0].name).name
-            if len(key.split()) > 1:
-                key = key.split()[0]
+            print(f"INFO: h5_dset [{ds_name}] has no dimensions")
+            continue
 
-            if h5_dset.dims[ii][0][:].size == h5_dset.shape[ii]:
-                buff = h5_dset.dims[ii][0][:]
-                if np.all(buff == 0):
-                    buff = np.arange(buff.size)
-            else:  # bug in some KMNI HDF5 files
-                buff = np.arange(h5_dset.shape[ii])
+        key = PurePath(h5_dset.dims[ii][0].name).name
+        if len(key.split()) > 1:
+            key = key.split()[0]
 
-            if ds_values.shape[ii] != h5_dset.shape[ii]:
-                if isinstance(data_sel, slice):
-                    buff = buff[data_sel]
-                elif len(data_sel) == h5_dset.ndim:
-                    buff = buff[data_sel[ii]]
-                elif not isinstance(data_sel, tuple):
-                    buff = buff[data_sel]
-                elif ii > len(data_sel):
-                    buff = buff[data_sel[-1]]
+        if h5_dset.dims[ii][0][:].size == h5_dset.shape[ii]:
+            buff = h5_dset.dims[ii][0][:]
+            if np.all(buff == 0):
+                buff = np.arange(buff.size)
+        else:  # bug in some KMNI HDF5 files
+            print(f"WARNING: h5_dset [{ds_name}] has incorrect dimensions")
+            continue
+
+        if ds_values.shape[ii] != h5_dset.shape[ii]:
+            if isinstance(data_sel, slice):
+                buff = buff[data_sel]
+            elif len(data_sel) == h5_dset.ndim:
+                buff = buff[data_sel[ii]]
+            elif not isinstance(data_sel, tuple):
+                buff = buff[data_sel]
+            elif ii > len(data_sel):
+                buff = buff[data_sel[-1]]
+            else:
+                buff = buff[data_sel[ii]]
+
+        dset = h5_dset.dims[ii][0]
+        if "units" in dset.attrs:
+            print(dset.attrs["units"])
+            print(dset.attrs["units"].startswith("seconds since"))
+            if dset.attrs["units"].startswith("seconds since"):
+                if np.issubdtype(dset.dtype, np.floating):
+                    buff = (
+                        np.array(dset.attrs["units"][14:], dtype="datetime64[us]")
+                        + (1e6 * buff).astype("timedelta64[us]")
+                    )
                 else:
-                    buff = buff[data_sel[ii]]
+                    buff = np.datetime64(dset.attrs["units"][14:]) + buff
 
-            ds_coords += (Coord(key, buff),)
+        ds_coords += (Coord(key, buff),)
 
     # remove all dimensions with size equal 1 from value (and error)
     ds_values = np.squeeze(ds_values)
 
     # collect all attributes
     ds_attrs = {}
-    for key, val in h5_dset.attrs:
+    for key, val in h5_dset.attrs.items():
+        if key in ["DIMENSION_LIST", "name"]:
+            continue
         ds_attrs[key] = val.decode() if isinstance(val, bytes) else val
 
     return DataArray(ds_values, coords=ds_coords, attrs=ds_attrs, name=ds_name)
