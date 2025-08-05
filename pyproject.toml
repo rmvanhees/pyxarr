@@ -31,19 +31,17 @@ dynamic = [
 ]
 dependencies = [
   "h5py>=3.9",
-  "matplotlib>=3.7",
-  "Cartopy>0.21",
   "numpy>=2.0",
 ]
 
 [project.scripts]
 
 [project.urls]
-# homepage = "https://github.com/rmvanhees/moniplot"
-# documentation = "https://moniplot.readthedocs.io/en/latest/"
-# Source = "https://github.com/rmvanhees/moniplot"
-# Changelog = "https://github.com/rmvanhees/moniplot/HISTORY.rst"
-# "Issue tracker" = "https://github.com/rmvanhees/moniplot/issues"
+homepage = "https://github.com/rmvanhees/pyxarr"
+# documentation = "https://pyxarr.readthedocs.io/en/latest/"
+Source = "https://github.com/rmvanhees/pyxarr"
+# Changelog = "https://github.com/rmvanhees/pyxarr/HISTORY.rst"
+"Issue tracker" = "https://github.com/rmvanhees/pyxarr/issues"
 
 [tool.hatch.version]
 source = "versioningit"
