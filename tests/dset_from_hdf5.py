@@ -32,12 +32,14 @@ from pyxarr.dset_from_h5 import dset_from_h5
 def test_1d() -> None:
     """Check read of a 1-D dataset."""
     flname = "xarr_test_1d.h5"
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++
     with h5py.File(flname, "w") as fid:
         fid.create_dataset("array_1d", data=np.random.rand(128).astype(float))
 
     with h5py.File(flname, "r") as fid:
         print("# Test 1-D, no dims", dset_from_h5(fid["array_1d"]))
 
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++
     with h5py.File(flname, "w") as fid:
         dset = fid.create_dataset("time", data=np.arange(128).astype("f8"))
         dset.attrs["long_name"] = "timestamp of housekeeping data"
@@ -50,10 +52,44 @@ def test_1d() -> None:
         dset = fid.create_dataset("array_1d", data=np.random.rand(128).astype(float))
         dset.dims[0].attach_scale(fid["time"])
         
+    with h5py.File(flname, "r") as fid:
+        print("\n# Test 1-D, with dims", dset_from_h5(fid["array_1d"]))
+
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++
+    with h5py.File(flname, "w") as fid:
+        dset = fid.create_dataset("time", data=np.arange(128).astype("u4"))
+        dset.attrs["long_name"] = "timestamp of housekeeping data"
+        dset.attrs["standard_name"] = "time"
+        dset.attrs["calendar"] = "proleptic_gregorian"
+        dset.attrs["coverage_content_type"] = "coordinate"
+        dset.attrs["units"] = "days since 2025-07-01"
+        dset = fid.create_dataset("array_1d", data=np.random.rand(128).astype(float))
+        dset.dims[0].attach_scale(fid["time"])
         
     with h5py.File(flname, "r") as fid:
         print("\n# Test 1-D, with dims", dset_from_h5(fid["array_1d"]))
 
+    flname = "xarr_test_3d.h5"
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++
+    with h5py.File(flname, "w") as fid:
+        dset = fid.create_dataset("time", data=np.arange(128).astype("u4"))
+        dset.attrs["long_name"] = "timestamp of housekeeping data"
+        dset.attrs["standard_name"] = "time"
+        dset.attrs["calendar"] = "proleptic_gregorian"
+        dset.attrs["coverage_content_type"] = "coordinate"
+        dset.attrs["units"] = "days since 2025-07-01"
+        dset = fid.create_dataset("row", data=np.arange(11).astype("u2"))
+        dset = fid.create_dataset("column", data=np.arange(17).astype("u2"))
+        dset = fid.create_dataset(
+            "array_3d",
+            data=np.random.rand((128 * 11 * 17)).astype(float).reshape(128, 11, 17),
+        )
+        dset.dims[0].attach_scale(fid["time"])
+        dset.dims[1].attach_scale(fid["row"])
+        dset.dims[2].attach_scale(fid["column"])
+        
+    with h5py.File(flname, "r") as fid:
+        print("\n# Test 3-D, with dims", dset_from_h5(fid["array_3d"]))
 
 
 
