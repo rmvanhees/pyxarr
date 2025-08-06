@@ -29,10 +29,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .xarr import Coord, DataArray
+from . import DataArray
 
 if TYPE_CHECKING:
     import h5py
+    from numpy.typeing import ArrayLike
 
 
 # - local functions --------------------------------
@@ -93,7 +94,9 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict:
     return attrs
 
 
-def __get_coords(dset: h5py.Dataset, data_sel: tuple[slice | int]) -> list:
+def __get_coords(
+    dset: h5py.Dataset, data_sel: tuple[slice | int]
+) -> list[tuple[str, ArrayLike]]:
     r"""Return coordinates of the HDF5 dataset with dimension scales.
 
     Parameters
@@ -142,7 +145,7 @@ def __set_coords(
     dset: h5py.Dataset | np.ndarray,
     data_sel: tuple[slice | int] | None,
     dim_names: list | None,
-) -> list:
+) -> list[tuple[str, ArrayLike]]:
     r"""Set coordinates of the HDF5 dataset.
 
     Parameters
@@ -333,8 +336,8 @@ def dset_from_h5(
                 del coords[ii]
 
     # - remove empty coordinates
-    co_tuple = tuple(Coord(key, val) for key, val in coords if val is not None)
-    # print(f"co_tuple: {co_tuple}")
+    coords = [(key, val) for key, val in coords if val is not None]
+    # print(f"coords: {coords}")
 
     # get dataset attributes
     attrs = __get_attrs(h5_dset, field)
@@ -342,4 +345,4 @@ def dset_from_h5(
     # get name of the dataset
     name = PurePath(h5_dset.name).name if field is None else field
 
-    return DataArray(data, coords=co_tuple, name=name, attrs=attrs)
+    return DataArray(data, coords=coords, name=name, attrs=attrs)
