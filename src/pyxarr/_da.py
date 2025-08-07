@@ -37,7 +37,7 @@ MAX_DIMS = 3
 
 
 # - class Coord ------------------------------------
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Coord:
     """Define one coordinate of a labeled array.
 
@@ -51,7 +51,7 @@ class Coord:
     """
 
     name: str | None = None
-    values: ArrayLike | None = None
+    values: NDArray | None = None
 
     def __bool__(self: Coord) -> bool:
         """Return False if Coord is empty."""
@@ -85,20 +85,24 @@ class Coords:
             return
         if isinstance(coords, dict):
             for key, val in coords.items():
-                self.__add__(Coord(key, val))
+                self.__add__(Coord(key, np.asarray(val)))
         else:
             for key, val in coords:
-                self.__add__(Coord(key, val))
+                self.__add__(Coord(key, np.asarray(val)))
 
     def __repr__(self: Coord) -> str:
-        return f"{self.data}"
+        msg = ""
+        with np.printoptions(threshold=5, floatmode="maxprec"):
+            for coord in self.data:
+                msg += f"  * {coord.name:8s} {coord.values.dtype} {coord.values}\n"
+        return msg
 
     def __len__(self: Coord) -> int:
         """Return number of coordinates."""
         return len(self.data)
 
     def __getitem__(self: Coords, name: str) -> Coord | None:
-        """Return ..."""
+        """Select coordinate on its dimension name."""
         if not self.data:
             return None
 
@@ -110,15 +114,18 @@ class Coords:
     def __iter__(self: Coords) -> Coords:
         return iter(self.data)
 
+    # ToDo: shouldn't we add a dimension as well? How to tricker this?
     def __add__(self: Coords, coord: Coord) -> Coords:
         if not isinstance(coord, Coord):
             raise ValueError("Invalid coordinate (not of type Coord)")
         self.data += (coord,)
         return self
 
+    # ToDo: do we need a __sub__ as well?
+
 
 # - class DataArray --------------------------------
-@dataclass()
+@dataclass(slots=True)
 class DataArray:
     """Define multi-dimensional labeled array.
 
@@ -192,13 +199,36 @@ class DataArray:
         """Return False if DataArray is empty."""
         return self.values is not None
 
+    def __repr__(self: DataArray) -> str:
+        list_dims = [f"{self.dims[i]}: {x}" for i, x in enumerate(self.values.shape)]
+        msg = f"<pyxarr.DataArray ({', '.join(list_dims)})>"
+        if self.name is not None:
+            msg += f"\n{self.name}"
+        with np.printoptions(threshold=5, floatmode="maxprec"):
+            msg += f"\n{self.values}"
+        msg += "\nCoordinates:"
+        msg += f"\n{self.coords}"
+        if self.attrs:
+            msg += "\nAttributes:"
+            msg += f"\n{self.attrs}"
+        return msg
+
     def mean(
         self: DataArray,
         dim: str | None = None,
         *,
         skipna: bool = False,
     ) -> DataArray:
-        """..."""
+        """Reduce this DataArray's data by applying `mean` along some axis.
+
+        Parameters
+        ----------
+        dim :  str, optional
+           Name of the dimension along which to apply `mean`.
+        skipna :  bool, default=False
+           If True, skip missing values (as marked by NaN)
+
+        """
         if dim is None:
             return DataArray(
                 np.nanmean(self.values) if skipna else self.values.mean(),
@@ -228,7 +258,16 @@ class DataArray:
         *,
         skipna: bool = False,
     ) -> DataArray:
-        """..."""
+        """Reduce this DataArray's data by applying `median` along some axis.
+
+        Parameters
+        ----------
+        dim :  str, optional
+           Name of the dimension along which to apply `mean`.
+        skipna :  bool, default=False
+           If True, skip missing values (as marked by NaN)
+
+        """
         if dim is None:
             return DataArray(
                 np.nanmedian(self.values) if skipna else np.median(self.values),
@@ -256,10 +295,21 @@ class DataArray:
         self: DataArray,
         dim: str | None = None,
         *,
-        skipna: bool = False,
         ddof: int = 0,
+        skipna: bool = False,
     ) -> DataArray:
-        """..."""
+        """Reduce this DataArray's data by applying `std` along some axis.
+
+        Parameters
+        ----------
+        dim :  str, optional
+           Name of the dimension along which to apply `mean`.
+        ddof :  int, default=0
+           Delta degree of freedom
+        skipna :  bool, default=False
+           If True, skip missing values (as marked by NaN)
+
+        """
         if dim is None:
             return DataArray(
                 np.nanstd(self.values, ddof=ddof)

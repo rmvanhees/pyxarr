@@ -26,7 +26,7 @@ __all__ = ["dset_from_xr"]
 
 from typing import TYPE_CHECKING
 
-from . import DataArray
+from pyxarr import DataArray
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -45,6 +45,7 @@ def dset_from_xr(xda: xr.DataArray) -> DataArray:
        the xarray.DataArray to be copied to a pyxarr.DataArray
 
     """
-    ds_coords = [(x, xda.coords[x]) for x in xda.coords]
+    # only the coordinates listed as dimension should be copied
+    ds_coords = [(x, xda.coords[x].values) for x in xda.dims]
 
     return DataArray(xda.values, coords=ds_coords, attrs=xda.attrs, name=xda.name)

@@ -112,7 +112,7 @@ def __get_coords(
 
     """
     coords = []
-    if len(dset.dims) == dset.ndim:
+    if len(dset.dims[0]) == dset.ndim:
         try:
             for ii, dim in enumerate(dset.dims):
                 # get name of dimension
