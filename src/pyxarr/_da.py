@@ -29,99 +29,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from pyxarr import Coords
+
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import NDArray
 
 # - global parameters ------------------------------
-MAX_DIMS = 3
-
-
-# - class Coord ------------------------------------
-@dataclass(frozen=True, slots=True)
-class Coord:
-    """Define one coordinate of a labeled array.
-
-    Parameters
-    ----------
-    name :  str, optional
-      name of the coordinate
-    values :  ArrayLike, optional
-      values or labels of the coordinate
-
-    """
-
-    name: str | None = None
-    values: NDArray | None = None
-
-    def __bool__(self: Coord) -> bool:
-        """Return False if Coord is empty."""
-        return self.name is not None
-
-    def copy(self: Coord) -> Coord:
-        """Return copy."""
-        return Coord(name=self.name, values=self.values.copy())
-
-
-# - class Coords -----------------------------------
-class Coords:
-    """Define one coordinate of a labeled array.
-
-    Parameters
-    ----------
-    coords :  dict, list, optional
-      a list or dictionary of coordinates. If a list, it should be a list of tuples
-      where the first element is the dimension name and the second element is the
-      corresponding coordinate array_like object.
-
-
-    """
-
-    def __init__(
-        self: Coords,
-        coords: dict[str, ArrayLike] | list[tuple[str, ArrayLike]] | None = None,
-    ) -> None:
-        self.data = ()
-        if coords is None:
-            return
-        if isinstance(coords, dict):
-            for key, val in coords.items():
-                self.__add__(Coord(key, np.asarray(val)))
-        else:
-            for key, val in coords:
-                self.__add__(Coord(key, np.asarray(val)))
-
-    def __repr__(self: Coord) -> str:
-        msg = ""
-        with np.printoptions(threshold=5, floatmode="maxprec"):
-            for coord in self.data:
-                msg += f"  * {coord.name:8s} {coord.values.dtype} {coord.values}\n"
-        return msg
-
-    def __len__(self: Coord) -> int:
-        """Return number of coordinates."""
-        return len(self.data)
-
-    def __getitem__(self: Coords, name: str) -> Coord | None:
-        """Select coordinate on its dimension name."""
-        if not self.data:
-            return None
-
-        for coord in self.data:
-            if coord.name == name:
-                return coord
-        raise ValueError(f"no coordinate: {name}")
-
-    def __iter__(self: Coords) -> Coords:
-        return iter(self.data)
-
-    # ToDo: shouldn't we add a dimension as well? How to tricker this?
-    def __add__(self: Coords, coord: Coord) -> Coords:
-        if not isinstance(coord, Coord):
-            raise ValueError("Invalid coordinate (not of type Coord)")
-        self.data += (coord,)
-        return self
-
-    # ToDo: do we need a __sub__ as well?
+MAX_DIMS = 3  # maximum number of automatically generated dimensions
 
 
 # - class DataArray --------------------------------
@@ -200,17 +114,25 @@ class DataArray:
         return self.values is not None
 
     def __repr__(self: DataArray) -> str:
-        list_dims = [f"{self.dims[i]}: {x}" for i, x in enumerate(self.values.shape)]
-        msg = f"<pyxarr.DataArray ({', '.join(list_dims)})>"
-        if self.name is not None:
-            msg += f"\n{self.name}"
+        list_dims = []
+        if self.values is not None:
+            list_dims = [
+                f"{self.dims[i]}: {x}" for i, x in enumerate(self.values.shape)
+            ]
+        msg = " ".join([
+            "<pyxarr.DataArray",
+            '\b' if self.name is None else f"{self.name!r}",
+            f"({', '.join(list_dims)})>"
+        ])
         with np.printoptions(threshold=5, floatmode="maxprec"):
-            msg += f"\n{self.values}"
-        msg += "\nCoordinates:"
-        msg += f"\n{self.coords}"
+            msg += f"\narray({self.values})"
+        if self.coords:
+            msg += "\nCoordinates:"
+            msg += f"{self.coords}"
         if self.attrs:
             msg += "\nAttributes:"
-            msg += f"\n{self.attrs}"
+            for key, val in self.attrs.items():
+                msg += f"\n    {key}:\t{val}"
         return msg
 
     def mean(
@@ -345,60 +267,37 @@ def tests() -> None:
 
     print("# --- empty data array ---")
     xarr = DataArray(attrs=attrs)
-    if xarr:
-        print(xarr.values)
-        print(xarr.coords)
-        print(xarr.dims)
-    print(xarr.attrs)
+    print(xarr)
 
     print("# --- 1-D array without coordinates ---")
     xarr = DataArray(list(range(11)), attrs=attrs)
-    if xarr:
-        print(xarr.values)
-        print(xarr.coords)
-        print(xarr.dims)
-        print(xarr.attrs)
+    print(xarr)
 
     print("\n# --- 2-D array without coordinates ---")
     xarr = DataArray(np.arange(3 * 7).reshape(3, 7))
-    print(xarr.values)
-    print(xarr.coords)
-    print(xarr.dims)
-    print(xarr.attrs)
+    print(xarr)
 
     print("\n# --- 3-D array without coordinates ---")
     xarr = DataArray(np.arange(5 * 3 * 7).reshape(5, 3, 7))
-    print(xarr.values)
-    print(xarr.coords)
-    print(xarr.dims)
-    print(xarr.attrs)
+    print(xarr)
 
     print("\n# --- 2-D array without coordinates with dimension names ---")
     xarr = DataArray(np.arange(3 * 7).reshape(3, 7), dims=("y", "x"))
-    print(xarr.values)
-    print(xarr.coords)
-    print(xarr.dims)
-    print(xarr.attrs)
+    print(xarr)
 
     print("\n# --- 2-D array with coordinates (dict) ---")
     xarr = DataArray(
         np.arange(3 * 7).reshape(3, 7),
         coords={"y": [1, 2, 3], "x": list(range(7))},
     )
-    print(xarr.values)
-    print(xarr.coords)
-    print(xarr.dims)
-    print(xarr.attrs)
+    print(xarr)
 
     print("\n# --- 2-D array with coordinates (list[tuple]) ---")
     xarr = DataArray(
         np.arange(3 * 7).reshape(3, 7),
         coords=[("y", [1, 2, 3]), ("x", list(range(7)))],
     )
-    print(xarr.values)
-    print(xarr.coords)
-    print(xarr.dims)
-    print(xarr.attrs)
+    print(xarr)
 
     print("\n# --- 2-D array with dims & coordinates ---")
     xarr = DataArray(
@@ -406,10 +305,7 @@ def tests() -> None:
         dims=("y", "x"),
         coords=([1, 2, 3], list(range(7))),
     )
-    print(xarr.values)
-    print(xarr.coords)
-    print(xarr.dims)
-    print(xarr.attrs)
+    print(xarr)
 
     xarr = DataArray(np.arange(5 * 3 * 7).reshape(5, 3, 7))
     print("\n# --- median of 3-D array, dim='time' ---")

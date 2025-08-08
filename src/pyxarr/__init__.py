@@ -20,8 +20,10 @@
 #
 """A minimal and light-weight equivalent of xarray.DataArray."""
 
-__all__ = ["DataArray", "dset_from_h5", "dset_from_xr"]
+__all__ = ["Coords", "DataArray", "Dataset", "dset_from_h5", "dset_from_xr"]
 
+from ._coord import Coords
 from ._da import DataArray
+from ._ds import Dataset
 from .dset_from_h5 import dset_from_h5
 from .dset_from_xr import dset_from_xr
