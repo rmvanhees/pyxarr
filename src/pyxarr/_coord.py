@@ -24,7 +24,8 @@ from __future__ import annotations
 
 __all__ = ["Coords"]
 
-from dataclasses import dataclass
+from copy import copy
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -73,11 +74,12 @@ class _Coord:
         self.values[key] = values
 
     def copy(self: _Coord) -> _Coord:
-        """Return copy."""
+        """Return deep copy."""
         return _Coord(name=self.name, values=self.values.copy())
 
 
 # - class Coords -----------------------------------
+@dataclass(slots=True)
 class Coords:
     """Define one coordinate of a labeled array.
 
@@ -90,52 +92,53 @@ class Coords:
 
     """
 
-    def __init__(
-        self: Coords,
-        coords: dict[str, ArrayLike] | list[tuple[str, ArrayLike]] | None = None,
-    ) -> None:
-        self.data = ()
-        if coords is None:
+    coords: tuple[_Coord] = field(default_factory=tuple)
+
+    def __post_init__(self: Coords) -> None:
+        if self.coords is None or all(isinstance(x, _Coord) for x in self.coords):
             return
-        if isinstance(coords, dict):
-            for key, val in coords.items():
-                self.__add__(_Coord(key, np.asarray(val)))
+
+        coords_in = copy(self.coords)
+        self.coords = ()
+        if isinstance(coords_in, dict):
+            for key, val in coords_in.items():
+                self += _Coord(key, np.asarray(val))
         else:
-            for key, val in coords:
-                self.__add__(_Coord(key, np.asarray(val)))
+            for key, val in coords_in:
+                self += _Coord(key, np.asarray(val))
 
     def __repr__(self: Coords) -> str:
         msg = ""
         with np.printoptions(threshold=5, floatmode="maxprec"):
-            for coord in self.data:
+            for coord in self.coords:
                 msg += f"\n  * {coord.name:8s} {coord.values.dtype} {coord.values}"
         return msg
 
     def __bool__(self: Coords) -> bool:
-        return bool(self.data)
+        return bool(self.coords)
 
     def __contains__(self: Coords, name: str) -> bool:
-        return any(name == coord.name for coord in self.data)
+        return any(name == coord.name for coord in self.coords)
 
     def __len__(self: Coords) -> int:
         """Return number of coordinates."""
-        return len(self.data)
+        return len(self.coords)
 
     def __getitem__(self: Coords, name: str) -> _Coord | None:
         """Select coordinate given its dimension name."""
-        for coord in self.data:
+        for coord in self.coords:
             if name == coord.name:
                 return coord
 
         return None
 
     def __iter__(self: Coords) -> Coords:
-        return iter(self.data)
+        return iter(self.coords)
 
     def __add__(self: Coords, coord: _Coord) -> Coords:
         if not isinstance(coord, _Coord):
             raise ValueError("Invalid coordinate (not of type _Coord)")
-        self.data += (coord,)
+        self.coords += (coord,)
         return self
 
 
