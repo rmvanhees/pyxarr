@@ -99,6 +99,8 @@ class DataArray:
             if not self.dims:
                 self.dims = _keys
             self.coords = Coords(list(zip(_keys, _val, strict=True)))
+        elif isinstance(self.coords, Coords) and not self.dims:
+            self.dims = tuple(x.name for x in self.coords)
         elif isinstance(self.coords, dict):
             if not self.dims:
                 self.dims = tuple(x for x in self.coords)
@@ -108,10 +110,6 @@ class DataArray:
         else:
             self.dims = tuple(x for x, _ in self.coords)
             self.coords = Coords(self.coords)
-
-    def __bool__(self: DataArray) -> bool:
-        """Return False if DataArray is empty."""
-        return self.values is not None
 
     def __repr__(self: DataArray) -> str:
         list_dims = []
@@ -134,6 +132,56 @@ class DataArray:
             for key, val in self.attrs.items():
                 msg += f"\n    {key}:\t{val}"
         return msg
+
+    def __bool__(self: DataArray) -> bool:
+        """Return False if DataArray is empty."""
+        return self.values is not None
+
+    def __len__(self: DataArray) -> int:
+        """Return length of first dimension."""
+        # consistent with numpy and xarray!
+        try:
+            return len(self.values)
+        except TypeError:
+            return 0
+
+    def __getitem__(self: DataArray, keys: int | NDArray[bool]) -> DataArray:
+        """Return selected elements."""
+        # perform loop over dims and perform selection on each coordinate
+        print("# --- keys:", keys)
+        if not keys or keys is Ellipsis:
+            return self
+
+        new_coords = []
+        for name, key in zip(self.dims, keys, strict=True):
+            new_coords.append((name, self.coords[name][key].values))
+            
+        return DataArray(
+            self.values[keys],
+            coords=new_coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
+
+    @property
+    def shape(self: DataArray) -> tuple[int, ...] | None:
+        """Return lengths of all dimensions."""
+        try:
+            return self.values.shape
+        except TypeError:
+            return ()
+        except AttributeError:
+            return None
+
+    @property
+    def size(self: DataArray) -> int | None:
+        """Return total size of array."""
+        try:
+            return self.values.size
+        except TypeError:
+            return 0
+        except AttributeError:
+            return None
 
     def mean(
         self: DataArray,
@@ -259,7 +307,44 @@ class DataArray:
 
 
 def tests() -> None:
-    """..."""
+    """Run tests on class DataArray."""
+    # - empty class Coords
+    xda = DataArray()
+    print("Create an empty DataArray:", xda)
+    print("- boolean test:", bool(xda))
+    print("- length:", len(xda))
+    print("- shape:", xda.shape)
+    print("- size:", xda.size)
+
+    xda = DataArray(1)
+    print("Create a DataArray with scalar:", xda)
+    print("- boolean test:", bool(xda))
+    print("- length:", len(xda))
+    print("- shape:", xda.shape)
+    print("- size:", xda.size)
+
+    xda = DataArray(list(range(11)))
+    print("Create a DataArray with list:", xda)
+    print("- boolean test:", bool(xda))
+    print("- length:", len(xda))
+    print("- shape:", xda.shape)
+    print("- size:", xda.size)
+
+
+    xda = DataArray(np.arange(3 * 5).reshape(3, 5))
+    print("Create a DataArray with numpy:", xda)
+    print("- boolean test:", bool(xda))
+    print("- length:", len(xda))
+    print("- shape:", xda.shape)
+    print("- size:", xda.size)
+    print("- select one element:", xda[1, 3])
+    print("- select one X-element:", xda[:, 3])
+    print("- select one Y-element:", xda[1, :])
+    print("- select all elements:", xda[()])
+    print("- select all elements:", xda[:, :])
+    print("- select all elements:", xda[...])
+    return
+
     attrs = {
         "long_name": "my dataset",
         "units": "m/s",
