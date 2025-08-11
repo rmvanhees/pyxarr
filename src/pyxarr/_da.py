@@ -117,16 +117,20 @@ class DataArray:
             list_dims = [
                 f"{self.dims[i]}: {x}" for i, x in enumerate(self.values.shape)
             ]
-        msg = " ".join([
-            "<pyxarr.DataArray",
-            '\b' if self.name is None else f"{self.name!r}",
-            f"({', '.join(list_dims)})>"
-        ])
+        msg = (
+            "<pyxarr.DataArray \b"
+            if self.name is None
+            else f"{self.name!r}({', '.join(list_dims)})>"
+        )
         with np.printoptions(threshold=5, floatmode="maxprec"):
             msg += f"\narray({self.values})"
-        if self.coords:
-            msg += "\nCoordinates:"
-            msg += f"{self.coords}"
+            if self.coords:
+                msg += "\nCoordinates:"
+                for coord in self.coords:
+                    msg += (
+                        f"\n {'*' if coord.name in self.dims else ' '} "
+                        f"{coord.name:8s} {coord.values.dtype} {coord.values}"
+                    )
         if self.attrs:
             msg += "\nAttributes:"
             for key, val in self.attrs.items():
@@ -148,14 +152,13 @@ class DataArray:
     def __getitem__(self: DataArray, keys: int | NDArray[bool]) -> DataArray:
         """Return selected elements."""
         # perform loop over dims and perform selection on each coordinate
-        print("# --- keys:", keys)
         if not keys or keys is Ellipsis:
             return self
 
         new_coords = []
         for name, key in zip(self.dims, keys, strict=True):
-            new_coords.append((name, self.coords[name][key].values))
-            
+            new_coords.append((name, self.coords[name].values[key]))
+
         return DataArray(
             self.values[keys],
             coords=new_coords,
@@ -182,6 +185,27 @@ class DataArray:
             return 0
         except AttributeError:
             return None
+
+    def swap_dims(self: DataArray, aux_dim: str, co_dim: str) -> None:
+        """Promote an auxiliary coordinate to a dimension coordinate.
+
+        Parameters
+        ----------
+        aux_dim: str
+           Name of the auxiliary coordinate
+        co_dim: str
+           Name of the dimension coordinate
+
+        """
+        if aux_dim not in self.coords:
+            raise KeyError("auxiliary coordinate '{aux_dim}' does not exists")
+        if co_dim not in self.dims:
+            raise KeyError("dimensional coordinate '{co_dim}' does not exists")
+        if len(self.coords[co_dim]) != len(self.coords[aux_dim]):
+            raise ValueError(
+                "coordinates '{aux_dim}' and '{co_dim}' should be equal in size"
+            )
+        self.dims = tuple(aux_dim if x == co_dim else x for x in self.dims)
 
     def mean(
         self: DataArray,
@@ -310,95 +334,44 @@ def tests() -> None:
     """Run tests on class DataArray."""
     # - empty class Coords
     xda = DataArray()
-    print("Create an empty DataArray:", xda)
+    print(f"\nCreate an empty DataArray:\n{xda}")
     print("- boolean test:", bool(xda))
     print("- length:", len(xda))
     print("- shape:", xda.shape)
     print("- size:", xda.size)
 
     xda = DataArray(1)
-    print("Create a DataArray with scalar:", xda)
+    print(f"\nCreate a DataArray with scalar:\n{xda}")
     print("- boolean test:", bool(xda))
     print("- length:", len(xda))
     print("- shape:", xda.shape)
     print("- size:", xda.size)
 
     xda = DataArray(list(range(11)))
-    print("Create a DataArray with list:", xda)
+    print(f"\nCreate a DataArray with list:\n{xda}")
     print("- boolean test:", bool(xda))
     print("- length:", len(xda))
     print("- shape:", xda.shape)
     print("- size:", xda.size)
-
 
     xda = DataArray(np.arange(3 * 5).reshape(3, 5))
-    print("Create a DataArray with numpy:", xda)
+    print(f"\nCreate a DataArray with numpy:\n{xda}")
     print("- boolean test:", bool(xda))
     print("- length:", len(xda))
     print("- shape:", xda.shape)
     print("- size:", xda.size)
-    print("- select one element:", xda[1, 3])
-    print("- select one X-element:", xda[:, 3])
-    print("- select one Y-element:", xda[1, :])
-    print("- select all elements:", xda[()])
-    print("- select all elements:", xda[:, :])
-    print("- select all elements:", xda[...])
-    return
+    print(f"- select one element [1, 3]:\n{xda[1, 3]}")
+    print(f"- select one X-element:[:, 3]\n{xda[:, 3]}")
+    print(f"- select one Y-element [1, :]:\n{xda[1, :]}")
+    print(f"- select all elements [()]:\n{xda[()]}")
+    print(f"- select all elements [:, :]:\n{xda[:, :]}")
+    print(f"- select all elements Elipis:\n{xda[...]}")
 
-    attrs = {
-        "long_name": "my dataset",
-        "units": "m/s",
-    }
-
-    print("# --- empty data array ---")
-    xarr = DataArray(attrs=attrs)
-    print(xarr)
-
-    print("# --- 1-D array without coordinates ---")
-    xarr = DataArray(list(range(11)), attrs=attrs)
-    print(xarr)
-
-    print("\n# --- 2-D array without coordinates ---")
-    xarr = DataArray(np.arange(3 * 7).reshape(3, 7))
-    print(xarr)
-
-    print("\n# --- 3-D array without coordinates ---")
-    xarr = DataArray(np.arange(5 * 3 * 7).reshape(5, 3, 7))
-    print(xarr)
-
-    print("\n# --- 2-D array without coordinates with dimension names ---")
-    xarr = DataArray(np.arange(3 * 7).reshape(3, 7), dims=("y", "x"))
-    print(xarr)
-
-    print("\n# --- 2-D array with coordinates (dict) ---")
-    xarr = DataArray(
-        np.arange(3 * 7).reshape(3, 7),
-        coords={"y": [1, 2, 3], "x": list(range(7))},
-    )
-    print(xarr)
-
-    print("\n# --- 2-D array with coordinates (list[tuple]) ---")
-    xarr = DataArray(
-        np.arange(3 * 7).reshape(3, 7),
-        coords=[("y", [1, 2, 3]), ("x", list(range(7)))],
-    )
-    print(xarr)
-
-    print("\n# --- 2-D array with dims & coordinates ---")
-    xarr = DataArray(
-        np.arange(3 * 7).reshape(3, 7),
-        dims=("y", "x"),
-        coords=([1, 2, 3], list(range(7))),
-    )
-    print(xarr)
-
-    xarr = DataArray(np.arange(5 * 3 * 7).reshape(5, 3, 7))
-    print("\n# --- median of 3-D array, dim='time' ---")
-    print(xarr.median(dim="time"))
-    print("\n# --- median of 3-D array, dim='row' ---")
-    print(xarr.median(dim="row"))
-    print("\n# --- median of 3-D array, dim='column' ---")
-    print(xarr.median(dim="column"))
+    xda = DataArray(np.arange(5 * 3 * 7).reshape(5, 3, 7), dims=("orbit", "y", "x"))
+    xda.coords += ("time", np.arange("2025-07-01", "2025-07-06", dtype="datetime64[D]"))
+    print(f"\nCreate a DataArray (3-D) and add coordinate 'time':\n{xda}")
+    xda.swap_dims("time", "orbit")
+    print(f"- change dims to 'time', 'y', 'x':\n{xda}")
 
 
 if __name__ == "__main__":
