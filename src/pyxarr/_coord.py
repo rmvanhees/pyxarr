@@ -101,18 +101,11 @@ class Coords:
         coords_in = copy(self.coords)
         self.coords = ()
         if isinstance(coords_in, dict):
-            for key, val in coords_in.items():
-                self += _Coord(key, np.asarray(val))
+            for res in coords_in.items():
+                self += res
         else:
-            for key, val in coords_in:
-                self += _Coord(key, np.asarray(val))
-
-    def __repr__(self: Coords) -> str:
-        msg = ""
-        with np.printoptions(threshold=5, floatmode="maxprec"):
-            for coord in self.coords:
-                msg += f"\n  * {coord.name:8s} {coord.values.dtype} {coord.values}"
-        return msg
+            for res in coords_in:
+                self += res
 
     def __bool__(self: Coords) -> bool:
         return bool(self.coords)
@@ -135,10 +128,11 @@ class Coords:
     def __iter__(self: Coords) -> Coords:
         return iter(self.coords)
 
-    def __add__(self: Coords, coord: _Coord) -> Coords:
-        if not isinstance(coord, _Coord):
-            raise ValueError("Invalid coordinate (not of type _Coord)")
-        self.coords += (coord,)
+    def __add__(self: Coords, coord: tuple[str, ArrayLike]) -> Coords:
+        name, val = coord
+        if name in self:
+            raise ValueError("You can not overwrite a coordinate")
+        self.coords += (_Coord(name, np.asarray(val)),)
         return self
 
 
@@ -151,7 +145,7 @@ def tests_coordinate() -> None:
 
     # - time coordinate
     coord = _Coord("time", np.arange("2025-02", "2025-03", dtype="datetime64[D]"))
-    print("Create a time coordinate:", coord)
+    print("\nCreate a time coordinate:", coord)
     print("- boolean test:", bool(coord))
     print("- size:", len(coord))
     print("- index:", coord[1])
@@ -166,7 +160,7 @@ def tests_coordinate() -> None:
 
     # - integer coordinate
     coord = _Coord("column", list(range(500, 600)))
-    print("Create a integer coordinate:", coord)
+    print("\nCreate a integer coordinate:", coord)
     print("- boolean test:", bool(coord))
     print("- size:", len(coord))
     print("- index:", coord[1])
@@ -183,11 +177,11 @@ def tests_coordinate() -> None:
 def tests_coords() -> None:
     """Run tests on local class Coords."""
     # - empty class Coords
-    print("Create an empty Coords:", Coords())
+    print("\nCreate an empty Coords:", Coords())
     print("- boolean test:", bool(Coords()))
     print("- size:", len(Coords()))
 
-    print("Fill a Coords instance")
+    print("\nFill a Coords instance")
     co_dict = {
         "time": np.arange("2025-02", "2025-03", dtype="datetime64[D]"),
         "row": np.arange(5),
