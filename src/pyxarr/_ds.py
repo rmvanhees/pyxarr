@@ -28,8 +28,7 @@ from dataclasses import KW_ONLY, dataclass, field
 
 import numpy as np
 
-from pyxarr import Coords
-from pyxarr import DataArray
+from pyxarr import Coords, DataArray
 
 # - global parameters ------------------------------
 
@@ -63,7 +62,7 @@ class Dataset:
         msg = "<pyxarr.Dataset>"
         msg += (
             f"\nDimensions:  "
-            f"({', '.join([f"{x.name}: {len(x.values)}" for x in self.coords])})"
+            f"({', '.join([f'{x.name}: {len(x.values)}' for x in self.coords])})"
         )
         if self.coords:
             msg += "\nCoordinates:"
@@ -78,7 +77,7 @@ class Dataset:
             for key, val in self.attrs.items():
                 msg += f"\n    {key}:\t{val}"
         return msg
-        
+
     def __len__(self: Dataset) -> int:
         """Return number of DataArrays."""
         return len(self.group)
@@ -97,7 +96,7 @@ class Dataset:
 
         for coord in xda.coords:
             if coord.name not in self.coords:
-                self.coords += coord
+                self.coords += (coord.name, coord.values)
 
         self.group[name] = xda
 

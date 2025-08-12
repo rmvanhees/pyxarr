@@ -117,11 +117,8 @@ class DataArray:
             list_dims = [
                 f"{self.dims[i]}: {x}" for i, x in enumerate(self.values.shape)
             ]
-        msg = (
-            "<pyxarr.DataArray \b"
-            if self.name is None
-            else f"{self.name!r}({', '.join(list_dims)})>"
-        )
+        name_str = "\b" if self.name is None else f"{self.name!r}"
+        msg = f"<pyxarr.DataArray {name_str} ({', '.join(list_dims)})>"
         with np.printoptions(threshold=5, floatmode="maxprec"):
             msg += f"\narray({self.values})"
             if self.coords:
