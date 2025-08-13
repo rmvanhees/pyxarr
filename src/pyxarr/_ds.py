@@ -65,18 +65,26 @@ class Dataset:
             f"({', '.join([f'{x.name}: {len(x.values)}' for x in self.coords])})"
         )
         if self.coords:
-            msg += "\nCoordinates:"
-            msg += f"{self.coords}"
+            with np.printoptions(threshold=5, floatmode="maxprec"):
+                msg += "\nCoordinates:"
+                for coord in self.coords:
+                    msg += f"\n  * {coord.name:8s} {coord.values.dtype} {coord.values}"
+        msg += "\nData variables:"
         if self.group:
-            msg += "\nData variables:"
             with np.printoptions(threshold=5, floatmode="maxprec"):
                 for key, dset in self.group.items():
                     msg += f"\n    {key}:\t{dset.dims} {dset.values}"
+        else:
+            msg += "\n    *empty*"
         if self.attrs:
             msg += "\nAttributes:"
             for key, val in self.attrs.items():
                 msg += f"\n    {key}:\t{val}"
         return msg
+
+    def __bool__(self: Dataset) -> bool:
+        """Return False if Dataset is empty."""
+        return bool(self.group)
 
     def __len__(self: Dataset) -> int:
         """Return number of DataArrays."""
@@ -112,12 +120,19 @@ def tests() -> None:
         coords=[("y", [1, 2, 3]), ("x", list(range(7)))],
     )
 
-    xds = Dataset(attrs={"title": "test example"})
-    print("adding foo:")
+    # - empty class Dataset
+    xds = Dataset()
+    print(f"\nShow empty Dataset:\n{xds}")
+    print("- boolean test:", bool(xds))
+    print("- length:", len(xds))
+
+    # - non-empty class Dataset
     xds["foo"] = xarr1
-    print("adding bar:")
     xds["bar"] = xarr2
-    print(xds)
+    xds.attrs["title"] = "test example"
+    print(f"\nShow non-empty Dataset:\n{xds}")
+    print("- boolean test:", bool(xds))
+    print("- length:", len(xds))
 
 
 if __name__ == "__main__":
