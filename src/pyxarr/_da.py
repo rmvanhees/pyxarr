@@ -153,12 +153,52 @@ class DataArray:
             return self
 
         new_coords = []
-        for name, key in zip(self.dims, keys, strict=True):
+        for name, key in zip(
+                self.dims,
+                (keys,) if isinstance(keys, np.ndarray) else keys,
+                strict=True,
+        ):
             new_coords.append((name, self.coords[name].values[key]))
 
         return DataArray(
             self.values[keys],
             coords=new_coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
+
+    def __add__(self: DataArray, other: DataArray | NDArray) -> DataArray:
+        """Return DataArray with values divided by other."""
+        return DataArray(
+            self.values + other if isinstance(other, np.ndarray) else other.values,
+            coords=self.coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
+
+    def __sub__(self: DataArray, other: DataArray | NDArray) -> DataArray:
+        """Return DataArray with values divided by other."""
+        return DataArray(
+            self.values - other if isinstance(other, np.ndarray) else other.values,
+            coords=self.coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
+
+    def __mull__(self: DataArray, other: DataArray | NDArray) -> DataArray:
+        """Return DataArray with values divided by other."""
+        return DataArray(
+            self.values * other if isinstance(other, np.ndarray) else other.values,
+            coords=self.coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
+
+    def __truediv__(self: DataArray, other: DataArray | NDArray) -> DataArray:
+        """Return DataArray with values divided by other."""
+        return DataArray(
+            self.values / other if isinstance(other, np.ndarray) else other.values,
+            coords=self.coords,
             name=self.name,
             attrs=self.attrs,
         )
