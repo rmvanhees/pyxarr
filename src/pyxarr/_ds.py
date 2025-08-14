@@ -90,11 +90,16 @@ class Dataset:
         """Return number of DataArrays."""
         return len(self.group)
 
+    def __contains__(self: Dataset, name: str) -> bool:
+        return name in self.group
+
+    def __iter__(self: Dataset) -> dict:
+        return iter(self.group)
+
     def __getitem__(self: Dataset, name: str) -> DataArray | None:
         """Return DataArray with given name."""
         if name in self.group:
             return self.group[name]
-
         return None
 
     def __setitem__(self: Dataset, name: str, xda: DataArray) -> None:
