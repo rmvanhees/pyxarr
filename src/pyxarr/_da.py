@@ -146,10 +146,10 @@ class DataArray:
         except TypeError:
             return 0
 
-    def __getitem__(self: DataArray, keys: int | NDArray[bool]) -> DataArray:
+    def __getitem__(self: DataArray, keys: int | slice | NDArray[bool]) -> DataArray:
         """Return selected elements."""
         # perform loop over dims and perform selection on each coordinate
-        if not keys or keys is Ellipsis:
+        if keys is Ellipsis:
             return self
 
         new_coords = []
