@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyxarr"
-description = "a minimal and light-weight equivalent of xarray.DataArray"
+description = "A light-weight class to work with multi-dimensional labeled arrays."
 readme = "README.md"
 authors = [
   {name = "Richard van Hees", email = "R.M.van.Hees@sron.nl"},

@@ -18,12 +18,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""A minimal and light-weight equivalent of xarray.DataArray."""
+"""A minimal and light-weight class to work with multi-dimensional labeled arrays."""
 
 __all__ = ["Coords", "DataArray", "Dataset", "dset_from_h5", "dset_from_xr"]
 
 from ._coord import Coords
 from ._da import DataArray
 from ._ds import Dataset
-from .dset_from_h5 import dset_from_h5
-from .dset_from_xr import dset_from_xr
