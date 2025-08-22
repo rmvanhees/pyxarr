@@ -48,11 +48,14 @@ class _Coord:
       name of the coordinate
     values :  ArrayLike, optional
       values or labels of the coordinate
+    attrs :  dict[str, Any], optional
+      attributes providing meta-data of the array
 
     """
 
     name: str | None = None
     values: ArrayLike | None = None
+    attrs: dict = field(default_factory=dict)
 
     def __bool__(self: _Coord) -> bool:
         """Return False if _Coord is empty."""
@@ -65,9 +68,10 @@ class _Coord:
     def __getitem__(self: _Coord, key: int | NDArray[bool]) -> _Coord:
         """Return selected elements."""
         if isinstance(key, np.ndarray):
-            return _Coord(name=self.name, values=np.asarray(self.values)[key])
-
-        return _Coord(name=self.name, values=self.values[key])
+            return _Coord(
+                name=self.name, values=np.asarray(self.values)[key], attrs=self.attrs
+            )
+        return _Coord(name=self.name, values=self.values[key], attrs=self.attrs)
 
     def __setitem__(self: _Coord, key: int | NDArray[bool], values: ArrayLike) -> None:
         """Return selected elements."""
@@ -75,7 +79,9 @@ class _Coord:
 
     def copy(self: _Coord) -> _Coord:
         """Return deep copy."""
-        return _Coord(name=self.name, values=self.values.copy())
+        return _Coord(
+            name=self.name, values=self.values.copy(), attrs=self.attrs.copy()
+        )
 
 
 # - class Coords -----------------------------------
