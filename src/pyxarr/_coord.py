@@ -113,6 +113,17 @@ class Coords:
             for res in coords_in:
                 self += res
 
+    def __repr__(self: Coords) -> str:
+        msg = f"<pyxarr.Coords ({', '.join([x.name for x in self])})>"
+        with np.printoptions(threshold=5, floatmode="maxprec"):
+            for coord in self.coords:
+                msg += f"\n   {coord.name:8s} {coord.values.dtype} {coord.values}"
+                if coord.attrs:
+                    msg += "\nAttributes:"
+                    for key, val in coord.attrs.items():
+                        msg += f"\n    {key}:\t{val}"
+        return msg
+
     def __bool__(self: Coords) -> bool:
         return bool(self.coords)
 

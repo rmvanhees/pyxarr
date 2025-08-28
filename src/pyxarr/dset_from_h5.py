@@ -28,8 +28,8 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING
 
 import numpy as np
-
-from . import DataArray
+from _coord import Coords
+from _da import DataArray
 
 if TYPE_CHECKING:
     import h5py
@@ -111,7 +111,7 @@ def __get_coords(
     A sequence of tuples [(name, data), ...]
 
     """
-    coords = []
+    coords = Coords()
     if len(dset.dims) == dset.ndim:
         try:
             for ii, dim in enumerate(dset.dims):
@@ -132,12 +132,24 @@ def __get_coords(
                 if not (buff is None or data_sel is None):
                     buff = buff[data_sel[ii]]
 
-                coords.append((name, buff))
+                # add this coordinate
+                coords += (name, buff)
+
+                # find dimmension scale and obtain it attributes
+                co_grp = dset.parent
+                while name not in co_grp:
+                    if co_grp == co_grp.parent:
+                        raise RuntimeError("can't find dimension scale")
+                    co_grp = co_grp.parent
+
+                for key, val in __get_attrs(co_grp[name], None).items():
+                    coords[name].attrs[key] = val
         except RuntimeError as exc:
             raise RuntimeError(
                 f"failed to collect coordinates of dataset {dset.name}"
             ) from exc
 
+    print(coords)
     return coords
 
 
@@ -336,7 +348,7 @@ def dset_from_h5(
                 del coords[ii]
 
     # - remove empty coordinates
-    coords = [(key, val) for key, val in coords if val is not None]
+    # coords = [(key, val) for key, val in coords if val is not None]
     # print(f"coords: {coords}")
 
     # get dataset attributes

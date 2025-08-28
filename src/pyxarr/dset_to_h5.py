@@ -29,8 +29,8 @@ from pathlib import Path
 
 import h5py
 import numpy as np
-
-from pyxarr import Coords, DataArray
+from _da import Coords, DataArray
+from dset_from_h5 import dset_from_h5
 
 # if TYPE_CHECKING:
 
@@ -42,17 +42,48 @@ def write_coordinates(gid: h5py.Group, coords: Coords) -> None:
         if coord.name in gid:
             continue
 
-        dset = gid.create_dataset(
-            coord.name,
-            coord.values.shape,
-            coord.values.dtype,
-        )
-        # dset[:] = coord.values
+        if np.issubdtype(coord.values.dtype, np.datetime64):
+            ref_day = coord.values[0].astype("datetime64[D]")
+            coord.attrs["units"] = f"seconds since {ref_day} 00:00:00"
+            data = coord.values - ref_day
+
+            if coord.values.dtype == np.dtype("<M8[ns]"):
+                coord.attrs["numpy_dtype"] = "datetime64[ns]"
+                data = data.astype(float) / 1e9
+            elif coord.values.dtype == np.dtype("<M8[us]"):
+                coord.attrs["numpy_dtype"] = "datetime64[us]"
+                data = data.astype(float) / 1e6
+            elif coord.values.dtype == np.dtype("<M8[ms]"):
+                coord.attrs["numpy_dtype"] = "datetime64[ms]"
+                data = data.astype(float) / 1e3
+            elif coord.values.dtype == np.dtype("<M8[s]"):
+                coord.attrs["numpy_dtype"] = "datetime64[s]"
+                data = data.astype("i4")
+            elif coord.values.dtype == np.dtype("<M8[D]"):
+                coord.attrs["numpy_dtype"] = "datetime64[D]"
+                coord.attrs["units"] = f"days since {coord.values[0]}"
+                data = data.astype("i4")
+            else:
+                raise KeyError("unknown dtype of np.datetime64")
+
+            dset = gid.create_dataset(
+                coord.name,
+                coord.values.shape,
+                data.dtype,
+            )
+            dset[:] = data
+        else:
+            dset = gid.create_dataset(
+                coord.name,
+                coord.values.shape,
+                coord.values.dtype,
+            )
+            dset[:] = coord.values
         dset.make_scale(
             f"{Path(coord.name).name}"
             " This is a netCDF dimension but not a netCDF variable."
         )
-        for key, val in coords.attrs.items():
+        for key, val in coord.attrs.items():
             dset.attrs[key] = val
 
 
@@ -113,6 +144,19 @@ def test_wr() -> None:
             "units": "1",
         },
     )
+    co_dict = {
+        "time": (
+            np.datetime64("2025-07-28T07:30:00").astype("datetime64[ns]")
+            + (1e9 * np.linspace(0, 120, 361)).astype("timedelta64[ns]")
+        ),
+    }
+    xdb = DataArray(
+        np.arange(361),
+        coords=co_dict,
+        name="position",
+    )
+
+    Path.unlink("test_wr_1.h5", missing_ok=True)
     try:
         with h5py.File("test_wr_1.h5") as fid:
             dset_to_h5(fid, xda)
@@ -121,6 +165,9 @@ def test_wr() -> None:
 
     with h5py.File("test_wr_1.h5", "w") as fid:
         dset_to_h5(fid, xda)
+    with h5py.File("test_wr_1.h5", "r+") as fid:
+        dset_to_h5(fid, xdb)
+        print(dset_from_h5(fid[xdb.name]))
 
     with h5py.File("test_wr_2.h5", "w") as fid:
         dset_to_h5(fid, xda, dest_group="group_01")
