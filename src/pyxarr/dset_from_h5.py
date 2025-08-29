@@ -28,8 +28,8 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING
 
 import numpy as np
-from _coord import Coords
-from _da import DataArray
+
+from . import Coords, DataArray
 
 if TYPE_CHECKING:
     import h5py
@@ -95,7 +95,10 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict:
 
 
 def __get_coords(
-    dset: h5py.Dataset, data_sel: tuple[slice | int]
+    dset: h5py.Dataset,
+    data_sel: tuple[slice | int],
+    *,
+    time_units: str | None = "[D]",
 ) -> list[tuple[str, ArrayLike]]:
     r"""Return coordinates of the HDF5 dataset with dimension scales.
 
@@ -105,49 +108,63 @@ def __get_coords(
        HDF5 dataset from which the data is read
     data_sel :  tuple of slice or int
        A numpy slice generated for example `numpy.s\_`
+    time_units: str, optional
+       Convert time axis to numpy.datetime64
 
     Returns
     -------
     A sequence of tuples [(name, data), ...]
 
     """
+    if len(dset.dims) != dset.ndim:
+        print("Oeps: what happens here?")
+
     coords = Coords()
-    if len(dset.dims) == dset.ndim:
+    for ii, dim in enumerate(dset.dims):
         try:
-            for ii, dim in enumerate(dset.dims):
-                # get name of dimension
-                name = PurePath(dim[0].name).name
-                if name.startswith("row") or name.startswith("column"):
-                    name = name.split(" ")[0]
+            # get name of dimension
+            name = PurePath(dim[0].name).name
+            if name.startswith("row") or name.startswith("column"):
+                name = name.split(" ")[0]
 
-                # determine coordinate
-                buff = None
-                if dim[0].size > 0:
-                    if np.all(dim[0][()] == 0):
-                        d_type = "u2" if ((dset.shape[ii] - 1) >> 16) == 0 else "u4"
-                        buff = np.arange(dset.shape[ii], dtype=d_type)
-                    else:
-                        buff = dim[0][()]
+            # determine coordinate
+            values = None
+            if dim[0].size > 0:
+                if np.all(dim[0][()] == 0):
+                    d_type = "u2" if ((dset.shape[ii] - 1) >> 16) == 0 else "u4"
+                    values = np.arange(dset.shape[ii], dtype=d_type)
+                else:
+                    values = dim[0][()]
 
-                if not (buff is None or data_sel is None):
-                    buff = buff[data_sel[ii]]
+            if not (values is None or data_sel is None):
+                values = values[data_sel[ii]]
 
-                # add this coordinate
-                coords += (name, buff)
-
-                # find dimmension scale and obtain it attributes
-                co_grp = dset.parent
-                while name not in co_grp:
-                    if co_grp == co_grp.parent:
-                        raise RuntimeError("can't find dimension scale")
-                    co_grp = co_grp.parent
-
-                for key, val in __get_attrs(co_grp[name], None).items():
-                    coords[name].attrs[key] = val
         except RuntimeError as exc:
             raise RuntimeError(
                 f"failed to collect coordinates of dataset {dset.name}"
             ) from exc
+
+        # find dimension scale and obtain it attributes
+        co_grp = dset.parent
+        while name not in co_grp:
+            if co_grp == co_grp.parent:
+                raise RuntimeError("can't find dimension scale")
+            co_grp = co_grp.parent
+
+        # do we need to convert this coordinate?
+        coord_attrs = __get_attrs(co_grp[name], None)
+        if coord_attrs["units"].startswith(("days since", "seconds since")):
+            ref_date = np.datetime64(
+                coord_attrs["units"][11:]
+                if coord_attrs["units"][10] == " "
+                else coord_attrs["units"][14:]
+            )
+            values = ref_date + values.astype(f"timedelta64{time_units}")
+
+        # add this coordinate
+        coords += (name, values)
+        for key, val in coord_attrs.items():
+            coords[name].attrs[key] = val
 
     print(coords)
     return coords
@@ -184,10 +201,10 @@ def __set_coords(
     coords = []
     for ii in range(dset.ndim):
         co_dtype = "u2" if ((dset.shape[ii] - 1) >> 16) == 0 else "u4"
-        buff = np.arange(dset.shape[ii], dtype=co_dtype)
+        values = np.arange(dset.shape[ii], dtype=co_dtype)
         if data_sel is not None:
-            buff = buff[data_sel[ii]]
-        coords.append((dim_names[ii], buff))
+            values = values[data_sel[ii]]
+        coords.append((dim_names[ii], values))
 
     return coords
 

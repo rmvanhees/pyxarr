@@ -27,8 +27,8 @@ __all__ = ["Dataset"]
 from dataclasses import KW_ONLY, dataclass, field
 
 import numpy as np
-from _coord import Coords
-from _da import DataArray
+
+from . import Coords, DataArray
 
 # - global parameters ------------------------------
 

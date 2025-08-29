@@ -29,8 +29,9 @@ from pathlib import Path
 
 import h5py
 import numpy as np
-from _da import Coords, DataArray
 from dset_from_h5 import dset_from_h5
+
+from . import Coords, DataArray
 
 # if TYPE_CHECKING:
 

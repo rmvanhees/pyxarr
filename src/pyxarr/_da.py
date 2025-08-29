@@ -28,7 +28,8 @@ from dataclasses import KW_ONLY, dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
-from _coord import Coords
+
+from . import Coords
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
