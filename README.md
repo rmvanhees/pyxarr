@@ -96,24 +96,31 @@ coords = [
 
 ### Time coordinates
 
-According to the [CF convensions](https://cfconventions.org/) (section 4.4),
-the time coordinate variables have to be stored as:
+Using the [CF convensions](https://cfconventions.org/) described in section 4.4,
+we can define a simple time-coordinate variable as:
 ```
  double time(time) ;
-   time:standard_name = time ;
+   time:axis = "T" ;
+   time:standard_name = "time" ;
    time:units = "days since 2024-01-01" ; // defaults to UTC
 ```
 or
 ```
  double time(time) ;
-   time:long_time
-   time:standard_name = time ;
+   time:long_time = "sample time" ;
+   time:axis = "T" ;
+   time:standard_name = "time" ;
    time:units = "seconds since 2024-01-01 00:00:00" ; // defaults to UTC
    time:calendar = "proleptic_gregorian" ; // or utc, tai, etc.
+   time:valid_min = 0. ;
+   time:valid_max = 172800. ;
 ```
-In most cases it is handy to read this information in a numpy.datetime64 array.
-Then we need to decide what the resolution of the timestamps are: days, hours, seconds,
-milli-seconds or even nano-seconds. 
+You can store any time-coordinate with all its attributes into an pyxarr `Coords`.
+However, often it handy to have the data read into a numpy.datetime64, this is an
+option which is offered in the pyxarr tools: `dest_from_h5` and `dest_to_h5`.
+Both tools will only perform the conversion when the precision (level of detail or
+granularity present) is specified. This can be: days, hours, minutes, seconds,
+milli-seconds, micro-seconds, or nano-seconds.
 
 **TBW**
 
