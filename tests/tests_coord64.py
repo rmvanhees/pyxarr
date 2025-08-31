@@ -53,7 +53,7 @@ def test_01() -> None:
 
     with h5py.File("test_01.h5") as fid:
         dset = fid["values"]
-        xda = dset_from_h5(dset)
+        xda = dset_from_h5(dset, time_units="D")
         print(xda)
 
 
