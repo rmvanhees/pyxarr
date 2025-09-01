@@ -24,16 +24,15 @@ from __future__ import annotations
 
 __all__ = ["dset_to_h5"]
 
-# from typing import TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import h5py
 import numpy as np
-from dset_from_h5 import dset_from_h5
 
 from . import Coords, DataArray
 
-# if TYPE_CHECKING:
+if TYPE_CHECKING:
+    import h5py
 
 
 # - local functions --------------------------------
@@ -132,54 +131,3 @@ def dset_to_h5(
 
     gid = fid if dest_group is None else fid.require_group(dest_group)
     write_data_array(gid, xarr)
-
-
-def test_wr() -> None:
-    """..."""
-    xda = DataArray(
-        np.arange(11 * 23, dtype="f4").reshape(11, 23),
-        dims=("row", "column"),
-        coords=(np.arange(11, dtype="u2"), np.arange(23, dtype="u2")),
-        name="image",
-        attrs={
-            "long_name": "Just some data",
-            "units": "1",
-        },
-    )
-    co_dict = {
-        "time": (
-            np.datetime64("2025-07-28T07:30:00").astype("datetime64[ns]")
-            + (1e9 * np.linspace(0, 120, 361)).astype("timedelta64[ns]")
-        ),
-    }
-    xdb = DataArray(
-        np.arange(361),
-        coords=co_dict,
-        name="position",
-    )
-
-    Path.unlink("test_wr_1.h5", missing_ok=True)
-    try:
-        with h5py.File("test_wr_1.h5") as fid:
-            dset_to_h5(fid, xda)
-    except FileNotFoundError as exc:
-        print(f"an expected error: {exc}")
-
-    with h5py.File("test_wr_1.h5", "w") as fid:
-        dset_to_h5(fid, xda)
-    with h5py.File("test_wr_1.h5", "r+") as fid:
-        dset_to_h5(fid, xdb)
-        print(dset_from_h5(fid[xdb.name]))
-
-    with h5py.File("test_wr_2.h5", "w") as fid:
-        dset_to_h5(fid, xda, dest_group="group_01")
-
-    try:
-        with h5py.File("test_wr_1.h5") as fid:
-            dset_to_h5(fid, xda)
-    except PermissionError as exc:
-        print(f"an expected error: {exc}")
-
-
-if __name__ == "__main__":
-    test_wr()
