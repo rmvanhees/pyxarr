@@ -142,8 +142,10 @@ def __get_coords(
 
         data = co_dset[:]
         coord_attrs = __get_attrs(co_grp[name], None)
-        if time_units is not None and coord_attrs["units"].startswith(
-            ("days since", "seconds since")
+        if (
+            time_units is not None
+            and "units" in coord_attrs
+            and coord_attrs["units"].startswith(("days since", "seconds since"))
         ):
             values = np.datetime64(
                 coord_attrs["units"][11:]
@@ -209,7 +211,7 @@ def __default_coords(
 
 
 def __get_data(
-    dset: h5py.Dataset, data_sel: tuple[slice | int] | None, *field: str
+    dset: h5py.Dataset, data_sel: tuple[slice | int] | None, field: str | None
 ) -> NDArray:
     r"""Return data of the HDF5 dataset.
 
@@ -217,9 +219,9 @@ def __get_data(
     ----------
     dset :  h5py.Dataset
        HDF5 dataset from which the data is read
-    data_sel :  tuple of slice or int
+    data_sel :  tuple of slice or int, optional
        A numpy slice generated for example `numpy.s\_`
-    field : str
+    field : str, optional
        Name of field in compound dataset or None
 
     Returns
