@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Definition of pyxarr function `dset_to_h5`."""
+"""Write a dataset from a HDF5 file, including dimensions and attributes."""
 
 from __future__ import annotations
 
@@ -48,6 +48,7 @@ def write_coordinates(gid: h5py.Group, coords: Coords) -> None:
             coord.attrs["units"] = f"seconds since {ref_day} 00:00:00"
             data = coord.values - ref_day
 
+            # Todo: add valid_min, valid_max?
             if coord.values.dtype == np.dtype("<M8[ns]"):
                 coord.attrs["numpy_dtype"] = "datetime64[ns]"
                 data = data.astype(float) / 1e9
@@ -111,16 +112,16 @@ def dset_to_h5(
     *,
     dest_group: str | None = None,
 ) -> None:
-    """Write content of DataArray or Dataset to a HDF4 file.
+    """Write content of DataArray or Dataset to a HDF5 file.
 
     Parameters
     ----------
     fid :  h5py.File | h5py.Group
-       blah blah blah
+       HDF5 file or group instance
     xarr :  DataArray | Dataset
-       blah blah blah
+       pyxarr DataArray or Dataset instance
     dest_group :  str, optional
-       blah blah blah
+       Name of the HDF5 group where the data should be stored
 
     """
     if not isinstance(xarr, DataArray):

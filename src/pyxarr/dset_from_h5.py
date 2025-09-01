@@ -18,14 +18,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Definition of pyxarr function `dset_from_h5`."""
+"""Read a dataset from a HDF5 file, including dimensions and attributes."""
 
 from __future__ import annotations
 
 __all__ = ["dset_from_h5"]
 
 from pathlib import PurePath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -33,11 +33,11 @@ from . import Coords, DataArray
 
 if TYPE_CHECKING:
     import h5py
-    from numpy.typeing import ArrayLike
+    from numpy.typeing import NDArray
 
 
 # - local functions --------------------------------
-def __get_attrs(dset: h5py.Dataset, field: str) -> dict:
+def __get_attrs(dset: h5py.Dataset, field: str) -> dict[str, Any]:
     """Return attributes of the HDF5 dataset.
 
     Parameters
@@ -49,7 +49,7 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict:
 
     Returns
     -------
-    dict with numpy arrays
+    dict with attributes
 
     """
     _field = None
@@ -97,8 +97,8 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict:
 def __get_coords(
     dset: h5py.Dataset,
     time_units: str | None = None,
-) -> list[tuple[str, ArrayLike]]:
-    r"""Return coordinates of the HDF5 dataset with dimension scales.
+) -> Coords | None:
+    r"""Return coordinates of the HDF5 dataset from its dimension scales.
 
     Parameters
     ----------
@@ -109,7 +109,7 @@ def __get_coords(
 
     Returns
     -------
-    A sequence of tuples [(name, data), ...]
+    Coords: coordinates of the dataset
 
     """
     if len(dset.dims) != dset.ndim:
@@ -177,7 +177,7 @@ def __get_coords(
 def __default_coords(
     dset: h5py.Dataset | np.ndarray,
     dim_names: list | None,
-) -> list[tuple[str, ArrayLike]]:
+) -> Coords:
     r"""Create coordinates if HDF5 dataset has no dimension scales.
 
     Parameters
@@ -190,7 +190,7 @@ def __default_coords(
 
     Returns
     -------
-    A sequence of tuples [(name, data), ...]
+    Coords: coordinates according to the dataset shape
 
     """
     if dim_names is None:
@@ -199,18 +199,18 @@ def __default_coords(
 
         dim_names = ["time", "row", "column"][-dset.ndim :]
 
-    coords = []
+    coords = Coords()
     for ii in range(dset.ndim):
         co_dtype = "u2" if ((dset.shape[ii] - 1) >> 16) == 0 else "u4"
         values = np.arange(dset.shape[ii], dtype=co_dtype)
-        coords.append((dim_names[ii], values))
+        coords += (dim_names[ii], values)
 
     return coords
 
 
 def __get_data(
     dset: h5py.Dataset, data_sel: tuple[slice | int] | None, *field: str
-) -> np.ndarray:
+) -> NDArray:
     r"""Return data of the HDF5 dataset.
 
     Parameters
