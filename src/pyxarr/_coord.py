@@ -145,11 +145,16 @@ class Coords:
     def __iter__(self: Coords) -> Coords:
         return iter(self.coords)
 
-    def __add__(self: Coords, coord: tuple[str, ArrayLike]) -> Coords:
-        name, val = coord
-        if name in self:
-            raise ValueError("You can not overwrite a coordinate")
-        self.coords += (_Coord(name, np.asarray(val)),)
+    def __add__(self: Coords, coord: _Coord | tuple[str, ArrayLike]) -> Coords:
+        if isinstance(coord, _Coord):
+            if coord.name in self:
+                raise ValueError("You can not overwrite a coordinate")
+            self.coords += (coord,)
+        else:
+            name, val = coord
+            if name in self:
+                raise ValueError("You can not overwrite a coordinate")
+            self.coords += (_Coord(name, np.asarray(val)),)
         return self
 
 
