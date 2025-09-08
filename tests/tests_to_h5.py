@@ -69,6 +69,9 @@ def test_wr() -> None:
     with h5py.File("test_wr_2.h5", "w") as fid:
         dset_to_h5(fid, xda, dest_group="group_01")
 
+    with h5py.File("test_wr_3.h5", "w") as fid:
+        dset_to_h5(fid, xda, chunks=xda.shape, compression=1, shuffle=True)
+
     try:
         with h5py.File("test_wr_1.h5") as fid:
             dset_to_h5(fid, xda)

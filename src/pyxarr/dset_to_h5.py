@@ -25,7 +25,7 @@ from __future__ import annotations
 __all__ = ["dset_to_h5"]
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NotRequired, TypedDict, Unpack
 
 import numpy as np
 
@@ -36,6 +36,15 @@ if TYPE_CHECKING:
 
 
 # - local functions --------------------------------
+class H5DsetKeys(TypedDict):
+    """Define keyweord arguments for h5py.create_dataset."""
+
+    chunks: NotRequired[tuple[int]]
+    fletcher32: NotRequired[bool]
+    compression: NotRequired[str | int]
+    shuffle: NotRequired[bool]
+
+
 def write_coordinates(gid: h5py.Group, coords: Coords) -> None:
     """Copy coordinates from DataArray/Dataset to HDF5 file/group."""
     for coord in coords:
@@ -47,7 +56,6 @@ def write_coordinates(gid: h5py.Group, coords: Coords) -> None:
             coord.attrs["units"] = f"seconds since {ref_day} 00:00:00"
             data = coord.values - ref_day
 
-            # Todo: add valid_min, valid_max?
             if coord.values.dtype == np.dtype("<M8[ns]"):
                 coord.attrs["numpy_dtype"] = "datetime64[ns]"
                 data = data.astype(float) / 1e9
@@ -88,14 +96,16 @@ def write_coordinates(gid: h5py.Group, coords: Coords) -> None:
             dset.attrs[key] = val
 
 
-def write_data_array(gid: h5py.Group, xda: DataArray) -> None:
+def write_data_array(
+    gid: h5py.Group, xda: DataArray, **kwargs: Unpack[H5DsetKeys]
+) -> None:
     """Write the data of a DataArray to the HDF5 file."""
     # First create the dimension scales
     write_coordinates(gid, xda.coords)
 
     # Then write the variable
     # ToDo: what if the DataArray has no name?
-    dset = gid.create_dataset(xda.name, data=xda.values)
+    dset = gid.create_dataset(xda.name, data=xda.values, **kwargs)
     for ii, dim in enumerate(xda.dims):
         dset.dims[ii].attach_scale(gid[dim])
 
@@ -110,6 +120,7 @@ def dset_to_h5(
     xarr: DataArray,
     *,
     dest_group: str | None = None,
+    **kwargs: Unpack[H5DsetKeys],
 ) -> None:
     """Write content of DataArray or Dataset to a HDF5 file.
 
@@ -121,6 +132,8 @@ def dset_to_h5(
        pyxarr DataArray or Dataset instance
     dest_group :  str, optional
        Name of the HDF5 group where the data should be stored
+    **kwargs :  Unpack[H5DsetKeys]
+       Keyword arguments for h5py.create_dataset
 
     """
     if not isinstance(xarr, DataArray):
@@ -130,4 +143,4 @@ def dset_to_h5(
         raise PermissionError("File not opened in write or append mode")
 
     gid = fid if dest_group is None else fid.require_group(dest_group)
-    write_data_array(gid, xarr)
+    write_data_array(gid, xarr, **kwargs)
