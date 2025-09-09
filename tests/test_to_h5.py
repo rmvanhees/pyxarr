@@ -24,7 +24,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-from pyxarr.da import DataArray
+from pyxarr import DataArray
 from pyxarr.dset_from_h5 import dset_from_h5
 from pyxarr.dset_to_h5 import dset_to_h5
 
