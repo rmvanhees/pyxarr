@@ -20,8 +20,6 @@
 #
 """A minimal and light-weight class to work with multi-dimensional labeled arrays."""
 
-__all__ = ["Coords", "DataArray", "Dataset", "dset_from_h5", "dset_from_xr"]
+__all__ = ["Coords", "DataArray", "Dataset"]
 
-from ._coord import Coords
-from ._da import DataArray
-from ._ds import Dataset
+from ._pyxarr import Coords, DataArray, Dataset

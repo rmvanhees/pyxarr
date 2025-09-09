@@ -26,7 +26,7 @@ __all__ = ["dset_from_xr"]
 
 from typing import TYPE_CHECKING
 
-from pyxarr import DataArray
+from . import DataArray
 
 if TYPE_CHECKING:
     import xarray as xr

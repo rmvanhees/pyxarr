@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from pyxarr import dset_from_xr
+from pyxarr.dset_from_xr import dset_from_xr
 
 # - local functions --------------------------------
 

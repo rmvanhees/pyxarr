@@ -29,10 +29,12 @@ from typing import TYPE_CHECKING, NotRequired, TypedDict, Unpack
 
 import numpy as np
 
-from . import Coords, DataArray
+from . import DataArray
 
 if TYPE_CHECKING:
     import h5py
+
+    from . import Coords
 
 
 # - local functions --------------------------------

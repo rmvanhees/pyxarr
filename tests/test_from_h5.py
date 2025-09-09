@@ -25,7 +25,7 @@ from __future__ import annotations
 import h5py
 import numpy as np
 
-from pyxarr import dset_from_h5
+from pyxarr.dset_from_h5 import dset_from_h5
 
 
 def test_1d() -> None:
