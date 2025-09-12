@@ -42,8 +42,8 @@ class H5DsetKeys(TypedDict):
     """Define keyweord arguments for h5py.create_dataset."""
 
     chunks: NotRequired[tuple[int]]
-    fletcher32: NotRequired[bool]
     compression: NotRequired[str | int]
+    fletcher32: NotRequired[bool]
     shuffle: NotRequired[bool]
 
 
@@ -121,7 +121,7 @@ def dset_to_h5(
     fid: h5py.File,
     xarr: DataArray,
     *,
-    dest_group: str | None = None,
+    group: str | None = None,
     **kwargs: Unpack[H5DsetKeys],
 ) -> None:
     """Write content of DataArray or Dataset to a HDF5 file.
@@ -132,10 +132,11 @@ def dset_to_h5(
        HDF5 file or group instance
     xarr :  DataArray | Dataset
        pyxarr DataArray or Dataset instance
-    dest_group :  str, optional
+    group :  str, optional
        Name of the HDF5 group where the data should be stored
     **kwargs :  Unpack[H5DsetKeys]
-       Keyword arguments for h5py.create_dataset
+       Keyword arguments for h5py.create_dataset: chunks, compression, fletcher32,
+       and shuffle
 
     """
     if not isinstance(xarr, DataArray):
@@ -144,5 +145,5 @@ def dset_to_h5(
     if fid.mode not in ("r+", "w"):
         raise PermissionError("File not opened in write or append mode")
 
-    gid = fid if dest_group is None else fid.require_group(dest_group)
+    gid = fid if group is None else fid.require_group(group)
     write_data_array(gid, xarr, **kwargs)
