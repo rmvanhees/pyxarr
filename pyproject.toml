@@ -35,6 +35,10 @@ dependencies = [
   "numpy>=1.26.4",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest >= 9.0"]
+test = ["pytest-cov >= 7.0"]
+
 [project.scripts]
 
 [project.urls]
@@ -56,6 +60,13 @@ method = "smallest"
 distance = "{next_version}.dev{distance}+{vcs}{rev}"
 dirty = "{base_version}+d{build_date:%Y%m%d}"
 distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib --cov=src/pyxarr --cov-report=xml --cov-report=term"
+strict = true
+
+[tool.coverage.run]
+source = ["src"]
 
 [tool.ruff]
 line-length = 88
