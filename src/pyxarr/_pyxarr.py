@@ -288,36 +288,36 @@ class DataArray:
         )
 
     def __add__(self: DataArray, other: DataArray | NDArray) -> DataArray:
-        """Return DataArray with values divided by other."""
+        """Return new DataArray with values of other added to current."""
         return DataArray(
-            self.values + other if isinstance(other, np.ndarray) else other.values,
+            self.values + (other if isinstance(other, np.ndarray) else other.values),
             coords=self.coords,
             name=self.name,
             attrs=self.attrs.copy(),
         )
 
     def __sub__(self: DataArray, other: DataArray | NDArray) -> DataArray:
-        """Return DataArray with values divided by other."""
+        """Return new DataArray with values of other subtracted from current."""
         return DataArray(
-            self.values - other if isinstance(other, np.ndarray) else other.values,
+            self.values - (other if isinstance(other, np.ndarray) else other.values),
             coords=self.coords,
             name=self.name,
             attrs=self.attrs.copy(),
         )
 
-    def __mull__(self: DataArray, other: DataArray | NDArray) -> DataArray:
-        """Return DataArray with values divided by other."""
+    def __mul__(self: DataArray, other: DataArray | NDArray) -> DataArray:
+        """Return new DataArray with values of current multiplied by other."""
         return DataArray(
-            self.values * other if isinstance(other, np.ndarray) else other.values,
+            self.values * (other if isinstance(other, np.ndarray) else other.values),
             coords=self.coords,
             name=self.name,
             attrs=self.attrs.copy(),
         )
 
     def __truediv__(self: DataArray, other: DataArray | NDArray) -> DataArray:
-        """Return DataArray with values divided by other."""
+        """Return new DataArray with values of current divided by other."""
         return DataArray(
-            self.values / other if isinstance(other, np.ndarray) else other.values,
+            self.values / (other if isinstance(other, np.ndarray) else other.values),
             coords=self.coords,
             name=self.name,
             attrs=self.attrs.copy(),

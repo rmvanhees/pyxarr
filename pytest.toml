@@ -1,0 +1,8 @@
+[pytest]
+addopts = [
+	"--import-mode=importlib",
+	"--cov=src/pyxarr",
+	"--cov-report=xml",
+	"--cov-report=term",
+]
+strict = true
