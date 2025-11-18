@@ -18,10 +18,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""A minimal and light-weight class to work with multi-dimensional labeled arrays."""
-
-__all__ = ["Coords", "DataArray", "Dataset"]
-
-from .lib.coords import Coords
-from .lib.da import DataArray
-from .lib.ds import Dataset
+"""Necessary but empty file."""

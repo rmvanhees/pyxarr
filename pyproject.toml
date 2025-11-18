@@ -62,11 +62,11 @@ dirty = "{base_version}+d{build_date:%Y%m%d}"
 distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib --cov=src/pyxarr --cov-report=xml --cov-report=term"
+addopts = "--import-mode=importlib --cov=pyxarr --cov-report=xml --cov-report=term"
 strict = true
 
 [tool.coverage.run]
-source = ["src"]
+# branch = true
 
 [tool.ruff]
 line-length = 88
