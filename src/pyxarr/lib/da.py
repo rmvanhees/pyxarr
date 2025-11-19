@@ -85,15 +85,15 @@ class DataArray:
         # define coordinates
         if not self.coords:
             if self.values.ndim > MAX_DIMS:
-                raise KeyError("Please provide coordinates of N-dim > 3")
+                raise KeyError("Please provide coordinates if N-dim > 3")
             if self.dims and len(self.dims) != self.values.ndim:
-                raise KeyError("Please provide dimension names for each dimension")
+                raise KeyError("Provide a dimension name for each dimension")
 
             # use dimension names or use default dimension names
             _keys = (
                 self.dims
                 if self.dims
-                else ("time", "row", "column")[MAX_DIMS - self.values.ndim :]
+                else ("Z", "Y", "X")[MAX_DIMS - self.values.ndim :]
             )
             _val = [list(range(x)) for x in self.values.shape]
             if not self.dims:
@@ -139,13 +139,15 @@ class DataArray:
         """Return False if DataArray is empty."""
         return self.values is not None
 
-    def __len__(self: DataArray) -> int:
-        """Return length of first dimension."""
-        # consistent with numpy and xarray!
-        try:
-            return len(self.values)
-        except TypeError:
-            return 0
+    def __eq__(self: DataArray, other: DataArray) -> bool:
+        """Return True if both objects are equal."""
+        return (
+            self.name == other.name
+            and self.attrs == other.attrs
+            and self.coords == other.coords
+            and self.dims == other.dims
+            and np.array_equal(self.values, other.values)
+        )
 
     def __getitem__(self: DataArray, keys: int | slice | NDArray[bool]) -> DataArray:
         """Return selected elements."""
@@ -167,6 +169,14 @@ class DataArray:
             name=self.name,
             attrs=self.attrs,
         )
+
+    def __len__(self: DataArray) -> int:
+        """Return length of first dimension."""
+        # consistent with numpy and xarray!
+        try:
+            return len(self.values)
+        except TypeError:
+            return 0
 
     def __add__(self: DataArray, other: DataArray | NDArray) -> DataArray:
         """Return new DataArray with values of other added to current."""
@@ -209,8 +219,6 @@ class DataArray:
         """Return lengths of all dimensions."""
         try:
             return self.values.shape
-        except TypeError:
-            return ()
         except AttributeError:
             return None
 
@@ -219,8 +227,6 @@ class DataArray:
         """Return total size of array."""
         try:
             return self.values.size
-        except TypeError:
-            return 0
         except AttributeError:
             return None
 
@@ -236,12 +242,12 @@ class DataArray:
 
         """
         if aux_dim not in self.coords:
-            raise KeyError("auxiliary coordinate '{aux_dim}' does not exists")
+            raise KeyError(f"auxiliary coordinate '{aux_dim}' does not exists")
         if co_dim not in self.dims:
-            raise KeyError("dimensional coordinate '{co_dim}' does not exists")
+            raise KeyError(f"dimensional coordinate '{co_dim}' does not exists")
         if len(self.coords[co_dim]) != len(self.coords[aux_dim]):
             raise ValueError(
-                "coordinates '{aux_dim}' and '{co_dim}' should be equal in size"
+                f"length coordinates '{aux_dim}' and '{co_dim}' are not equal"
             )
         self.dims = tuple(aux_dim if x == co_dim else x for x in self.dims)
 

@@ -60,6 +60,14 @@ class _Coord:
         """Return False if object is empty."""
         return self.name is not None
 
+    def __eq__(self: _Coord, other: _Coord) -> bool:
+        """Return True if both objects are equal."""
+        return (
+            self.name == other.name
+            and (self.attrs == other.attrs)
+            and np.array_equal(self.values, other.values)
+        )
+
     def __len__(self: _Coord) -> int:
         """Return length of coordinate."""
         return len(self.values) if self else 0
@@ -133,9 +141,13 @@ class Coords:
         """Return True when item is member of object."""
         return any(name == coord.name for coord in self.coords)
 
-    def __len__(self: Coords) -> int:
-        """Return number of coordinates."""
-        return len(self.coords)
+    def __eq__(self: Coords, other: Coords) -> bool:
+        """Return True if both objects are equal."""
+        for co_self, co_other in zip(self, other, strict=True):
+            if not co_self == co_other:
+                return False
+
+        return True
 
     def __getitem__(self: Coords, name: str) -> _Coord | None:
         """Select coordinate given its dimension name."""
@@ -148,6 +160,10 @@ class Coords:
     def __iter__(self: Coords) -> Coords:
         """Return an iterator object."""
         return iter(self.coords)
+
+    def __len__(self: Coords) -> int:
+        """Return number of coordinates."""
+        return len(self.coords)
 
     def __add__(self: Coords, coord: _Coord | tuple[str, ArrayLike]) -> Coords:
         """Add a coordinate to object."""
