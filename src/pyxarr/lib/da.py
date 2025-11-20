@@ -111,7 +111,7 @@ class DataArray:
             self.dims = tuple(x for x, _ in self.coords)
             self.coords = Coords(self.coords)
 
-    def __repr__(self: DataArray) -> str:
+    def __repr__(self: DataArray) -> str:  # pragma: no cover
         """Convert object to string representation."""
         list_dims = []
         if self.values is not None:

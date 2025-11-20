@@ -121,7 +121,7 @@ class Coords:
             for res in coords_in:
                 self += res
 
-    def __repr__(self: Coords) -> str:
+    def __repr__(self: Coords) -> str:  # pragma: no cover
         """Convert object to string representation."""
         msg = f"<pyxarr.Coords ({', '.join([x.name for x in self])})>"
         with np.printoptions(threshold=5, floatmode="maxprec"):

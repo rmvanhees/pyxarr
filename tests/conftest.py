@@ -52,8 +52,8 @@ def da_scalar() -> DataArray:
 def da_full() -> DataArray:
     """Return instance of class DataArray with 3 dimensions."""
     return DataArray(
-        np.arange(5 * 3 * 7, dtype=float).reshape(5, 3, 7),
-        dims=("orbit", "y", "x"),
+        np.arange(5 * 11 * 17, dtype=float).reshape(5, 11, 17),
+        dims=("orbit", "Y", "X"),
     )
 
 
@@ -61,8 +61,8 @@ def da_full() -> DataArray:
 def da_ones() -> DataArray:
     """Return instance of class DataArray with 3 dimensions."""
     return DataArray(
-        np.ones((5, 3, 7), dtype=float),
-        dims=("orbit", "y", "x"),
+        np.ones((5, 11, 17), dtype=float),
+        dims=("orbit", "Y", "X"),
     )
 
 

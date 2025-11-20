@@ -59,7 +59,7 @@ class Dataset:
     #    """Check and or convert class attributes of DataArray."""
     #    return
 
-    def __repr__(self: Dataset) -> str:
+    def __repr__(self: Dataset) -> str:  # pragma: no cover
         """Convert object to string representation."""
         msg = "<pyxarr.Dataset>"
         msg += (
