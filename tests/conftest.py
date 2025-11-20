@@ -43,6 +43,28 @@ def co_from_dict() -> Coords:
 
 
 @pytest.fixture
+def co_from_tuple() -> Coords:
+    """Return instance of class Coords with 3 dimensions."""
+    co_tuple = (
+        ("time", np.arange("2025-02-02", "2025-02-26", dtype="datetime64[D]")),
+        ("row", np.arange(5)),
+        ("column", list(range(11))),
+    )
+    return Coords(co_tuple)
+
+
+@pytest.fixture
+def co_from_obj() -> Coords:
+    """Return instance of class Coords with 3 dimensions."""
+    co_obj = (
+        _Coord("time", np.arange("2025-02-02", "2025-02-26", dtype="datetime64[D]")),
+        _Coord("row", np.arange(5)),
+        _Coord("column", list(range(11))),
+    )
+    return Coords(co_obj)
+
+
+@pytest.fixture
 def da_scalar() -> DataArray:
     """Return scalar instance of class DataArray."""
     return DataArray(3.14)

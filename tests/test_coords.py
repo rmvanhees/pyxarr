@@ -56,6 +56,15 @@ class TestCoord:
 class TestCoords:
     """Class to test Coords from pyxarr.lib.coords."""
 
+    def test_creation(
+        self: TestCoords,
+        co_from_dict: Coords,
+        co_from_tuple: Coords,
+        co_from_obj: Coords,
+    ) -> None:
+        assert co_from_dict == co_from_tuple
+        assert co_from_dict == co_from_obj
+
     def test_bool(self: TestCoords, co_from_dict: Coords) -> None:
         """Unit-test for bool method."""
         assert not bool(Coords())
@@ -68,6 +77,23 @@ class TestCoords:
         assert "row" in co_from_dict
         assert "column" in co_from_dict
         assert "x" not in co_from_dict
+
+    def test_eq(self: TestCoords, co_from_dict: Coords) -> None:
+        """Unit-test for len method."""
+        co_tuple = (
+            _Coord(
+                "time", np.arange("2025-02-02", "2025-02-26", dtype="datetime64[D]")
+            ),
+        )
+        assert not co_from_dict == Coords(co_tuple)
+        co_tuple = (
+            _Coord(
+                "time", np.arange("2025-02-02", "2025-02-26", dtype="datetime64[D]")
+            ),
+            _Coord("Y", np.arange(5)),
+            _Coord("Z", list(range(11))),
+        )
+        assert not co_from_dict == Coords(co_tuple)
 
     def test_getitem(self: TestCoords, co_from_dict: Coords) -> None:
         """Unit-test for getitem method."""

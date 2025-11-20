@@ -143,6 +143,9 @@ class Coords:
 
     def __eq__(self: Coords, other: Coords) -> bool:
         """Return True if both objects are equal."""
+        if len(self) != len(other):
+            return False
+
         for co_self, co_other in zip(self, other, strict=True):
             if not co_self == co_other:
                 return False
