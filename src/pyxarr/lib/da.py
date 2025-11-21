@@ -142,8 +142,7 @@ class DataArray:
     def __eq__(self: DataArray, other: DataArray) -> bool:
         """Return True if both objects are equal."""
         return (
-            self.name == other.name
-            and self.attrs == other.attrs
+            self.attrs == other.attrs
             and self.coords == other.coords
             and self.dims == other.dims
             and np.array_equal(self.values, other.values)

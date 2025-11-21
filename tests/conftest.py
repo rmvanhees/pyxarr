@@ -67,7 +67,7 @@ def co_from_obj() -> Coords:
 @pytest.fixture
 def da_scalar() -> DataArray:
     """Return scalar instance of class DataArray."""
-    return DataArray(3.14)
+    return DataArray(3.14, name="scalar")
 
 
 @pytest.fixture
@@ -76,6 +76,7 @@ def da_full() -> DataArray:
     return DataArray(
         np.arange(5 * 11 * 17, dtype=float).reshape(5, 11, 17),
         dims=("orbit", "Y", "X"),
+        name="threeDims",
     )
 
 
@@ -85,6 +86,7 @@ def da_ones() -> DataArray:
     return DataArray(
         np.ones((5, 11, 17), dtype=float),
         dims=("orbit", "Y", "X"),
+        name="threeDims(ones)",
     )
 
 
@@ -104,6 +106,7 @@ def da_from_coords(co_from_dict: Coords, attrs_for_da: dict) -> DataArray:
         np.arange(24 * 5 * 11, dtype=float).reshape(24, 5, 11),
         coords=co_from_dict,
         attrs=attrs_for_da,
+        name="from_coords",
     )
 
 
@@ -118,6 +121,7 @@ def da_from_dict(attrs_for_da: dict) -> DataArray:
             "column": list(range(11)),
         },
         attrs=attrs_for_da,
+        name="from_dict",
     )
 
 
@@ -132,6 +136,7 @@ def da_from_tuple(attrs_for_da: dict) -> DataArray:
             ("column", np.arange(11)),
         ),
         attrs=attrs_for_da,
+        name="from_tuple",
     )
 
 
@@ -147,4 +152,5 @@ def da_from_dims(co_from_dict: Coords, attrs_for_da: dict) -> DataArray:
         ),
         dims=("time", "row", "column"),
         attrs=attrs_for_da,
+        name="from_dims",
     )
