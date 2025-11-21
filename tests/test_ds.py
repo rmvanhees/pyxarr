@@ -1,6 +1,6 @@
 #     https://github.com/rmvanhees/pyxarr.git
 #
-# Copyright (c) 2025 SRON
+# Copyright (c) 2025 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
