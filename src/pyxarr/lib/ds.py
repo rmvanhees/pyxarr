@@ -52,13 +52,20 @@ class Dataset:
 
     group: dict[str, DataArray] = field(default_factory=dict)
     _: KW_ONLY
-    coords: Coords = field(default_factory=Coords)
     attrs: dict = field(default_factory=dict)
+    coords: Coords = field(default_factory=Coords, init=False)
+    dims: tuple[str, ...] = field(default_factory=tuple, init=False)
 
-    # def __post_init__(self: Dataset) -> None:
-    #    """Check and or convert class attributes of DataArray."""
-    #    return
-    #
+    def __post_init__(self: Dataset) -> None:
+        """Define dimensions and coordinates of the new Dataset."""
+        self.coords = ()
+        self.dims = ()
+        for da in self.group.values():
+            for coord in da.coords:
+                if coord not in self.coords:
+                    self.coords += (coord,)
+                    self.dims += (coord.name,)
+
     def __repr__(self: Dataset) -> str:  # pragma: no cover
         """Convert object to string representation."""
         msg = "<pyxarr.Dataset>"
@@ -67,15 +74,22 @@ class Dataset:
             f"({', '.join([f'{x.name}: {len(x.values)}' for x in self.coords])})"
         )
         if self.coords:
-            with np.printoptions(threshold=5, floatmode="maxprec"):
-                msg += "\nCoordinates:"
+            msg += "\nCoordinates:"
+            with np.printoptions(threshold=5, floatmode="maxprec", linewidth=110):
                 for coord in self.coords:
                     msg += f"\n  * {coord.name:8s} {coord.values.dtype} {coord.values}"
         msg += "\nData variables:"
         if self.group:
-            with np.printoptions(threshold=5, floatmode="maxprec"):
-                for key, dset in self.group.items():
-                    msg += f"\n    {key}:\t{dset.dims} {dset.values}"
+            for key, dset in self.group.items():
+                nbytes = dset.values.nbytes
+                for prefix in ["", "k", "M", "G", "T"]:
+                    if nbytes < 1000:
+                        str_size = f"{round(nbytes):g}{prefix}B"
+                        break
+                    nbytes /= 1000
+                else:
+                    str_size = f"{round(nbytes):g}PB"
+                msg += f"\n    {key}:\t{dset.dims} {dset.values.dtype} {str_size}"
         else:
             msg += "\n    *empty*"
         if self.attrs:
@@ -100,6 +114,17 @@ class Dataset:
         """Return an iterator object."""
         return iter(self.group)
 
+    def __eq__(self: Dataset, other: Dataset) -> bool:
+        """Return True if both objects are equal."""
+        if self.group.keys() != other.group.keys():
+            return False
+
+        for key in self.group:
+            if not self[key] == other[key]:
+                return False
+
+        return self.attrs == other.attrs and self.coords == other.coords
+
     def __getitem__(self: Dataset, name: str) -> DataArray | None:
         """Return DataArray with given name."""
         if name in self.group:
@@ -112,7 +137,8 @@ class Dataset:
             raise ValueError("you can only add DataArrays to a Dataset")
 
         for coord in xda.coords:
-            if coord.name not in self.coords:
-                self.coords += (coord.name, coord.values)
+            if coord not in self.coords:
+                self.coords += (coord,)
+                self.dims += (coord.name,)
 
         self.group[name] = xda

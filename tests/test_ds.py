@@ -19,6 +19,9 @@
 
 from __future__ import annotations
 
+import numpy as np
+import pytest
+
 from pyxarr import DataArray, Dataset
 
 
@@ -44,7 +47,9 @@ class TestDataset:
         ds_full = Dataset({"foo": da_full})
         assert bool(ds_full)
         assert len(ds_full) == 1
-        assert "foo" in ds_full
+        for key in ds_full:
+            assert key in ds_full
+        assert "fff" not in ds_full
 
     def test_two(self: TestDataset, da_full: DataArray, da_ones: DataArray) -> None:
         """Unit-test for Dataset with two 3-D DataArray."""
@@ -54,3 +59,25 @@ class TestDataset:
         assert "bar" in ds_full
         assert ds_full["bar"] == da_ones
         assert ds_full["scalar"] is None
+
+    def test_creation(
+        self: TestDataset, da_full: DataArray, da_ones: DataArray
+    ) -> None:
+        """Unit-test for Dataset with two 3-D DataArray and __eq__ method."""
+        ds_add = Dataset()
+        ds_add["foo"] = da_full
+        ds_add["bar"] = da_ones
+        ds_dict = Dataset({"foo": da_full, "bar": da_ones})
+        assert ds_add == ds_dict
+        ds_add = Dataset()
+        ds_add["fff"] = da_full
+        ds_add["bar"] = da_ones
+        assert ds_add != ds_dict
+        ds_add = Dataset()
+        ds_add["foo"] = da_ones
+        ds_add["bar"] = da_ones
+        assert ds_add != ds_dict
+        ds_add = Dataset()
+        with pytest.raises(ValueError, match=r".* only add DataArrays .*") as excinfo:
+            ds_add["foo"] = np.ones((24, 1, 17))
+        assert "you can only add DataArrays to a Dataset" in str(excinfo.value)

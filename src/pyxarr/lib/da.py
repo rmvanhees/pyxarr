@@ -121,7 +121,7 @@ class DataArray:
         name_str = "\b" if self.name is None else f"{self.name!r}"
         msg = f"<pyxarr.DataArray {name_str} ({', '.join(list_dims)})>"
         with np.printoptions(threshold=5, floatmode="maxprec"):
-            msg += f"\narray({self.values})"
+            msg += f"\narray({self.values!r})"
             if self.coords:
                 msg += "\nCoordinates:"
                 for coord in self.coords:
