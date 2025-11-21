@@ -131,5 +131,5 @@ The code is developed by R.M. van Hees (SRON)
 
 
 ## License
-* Copyright: SRON (https://www.sron.nl)
+* Copyright: R.M. van Hees (SRON) (https://www.sron.nl)
 * License: Apache-2.0
