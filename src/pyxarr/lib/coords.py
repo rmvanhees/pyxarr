@@ -72,13 +72,17 @@ class _Coord:
         """Return length of coordinate."""
         return len(self.values) if self else 0
 
-    def __getitem__(self: _Coord, key: int | NDArray[bool]) -> _Coord:
+    def __getitem__(self: _Coord, key: int | slice | NDArray[bool]) -> _Coord:
         """Return selected elements."""
         if isinstance(key, np.ndarray):
             return _Coord(
                 name=self.name, values=np.asarray(self.values)[key], attrs=self.attrs
             )
-        return _Coord(name=self.name, values=[self.values[key]], attrs=self.attrs)
+        if isinstance(key, int):
+            return _Coord(
+                name=self.name, values=np.asarray([self.values[key]]), attrs=self.attrs
+            )
+        return _Coord(name=self.name, values=self.values[key], attrs=self.attrs)
 
     def __setitem__(self: _Coord, key: int | NDArray[bool], values: ArrayLike) -> None:
         """Return selected elements."""
