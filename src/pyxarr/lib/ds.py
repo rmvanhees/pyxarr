@@ -58,7 +58,7 @@ class Dataset:
 
     def __post_init__(self: Dataset) -> None:
         """Define dimensions and coordinates of the new Dataset."""
-        self.coords = ()
+        self.coords = Coords()
         self.dims = ()
         for da in self.group.values():
             for coord in da.coords:
@@ -137,8 +137,8 @@ class Dataset:
             raise ValueError("you can only add DataArrays to a Dataset")
 
         for coord in xda.coords:
-            if coord not in self.coords:
-                self.coords += (coord,)
+            if coord.name not in self.coords:
+                self.coords += coord
                 self.dims += (coord.name,)
 
         self.group[name] = xda
