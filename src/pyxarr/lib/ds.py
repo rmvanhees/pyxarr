@@ -63,7 +63,7 @@ class Dataset:
         for da in self.group.values():
             for coord in da.coords:
                 if coord not in self.coords:
-                    self.coords += (coord,)
+                    self.coords += coord
                     self.dims += (coord.name,)
 
     def __repr__(self: Dataset) -> str:  # pragma: no cover
@@ -137,7 +137,7 @@ class Dataset:
             raise ValueError("you can only add DataArrays to a Dataset")
 
         for coord in xda.coords:
-            if coord.name not in self.coords:
+            if coord not in self.coords:
                 self.coords += coord
                 self.dims += (coord.name,)
 

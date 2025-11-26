@@ -141,7 +141,7 @@ def da_from_tuple(attrs_for_da: dict) -> DataArray:
 
 
 @pytest.fixture
-def da_from_dims(co_from_dict: Coords, attrs_for_da: dict) -> DataArray:
+def da_from_dims(attrs_for_da: dict) -> DataArray:
     """Create DataArray, coords initialized with coords."""
     return DataArray(
         np.arange(24 * 5 * 11, dtype=float).reshape(24, 5, 11),

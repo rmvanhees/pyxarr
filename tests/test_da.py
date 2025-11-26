@@ -150,7 +150,7 @@ class TestDataArray:
         da_full.values[:, 3, 5] = np.nan
         assert da_full.mean(skipna=True).values == np.nanmean(da_full.values)
         with pytest.raises(ValueError, match="invalid dimension") as excinfo:
-            da_full.mean(dim="Z").values, np.mean(da_full.values, axis=0)
+            _ = da_full.mean(dim="Z").values, np.mean(da_full.values, axis=0)
         assert "invalid dimension" in str(excinfo.value)
 
     def test_median(self: TestDataArray, da_full: DataArray) -> None:
@@ -162,7 +162,7 @@ class TestDataArray:
         da_full.values[:, 3, 5] = np.nan
         assert da_full.median(skipna=True).values == np.nanmedian(da_full.values)
         with pytest.raises(ValueError, match="invalid dimension") as excinfo:
-            da_full.median(dim="Z").values, np.median(da_full.values, axis=0)
+            _ = da_full.median(dim="Z").values, np.median(da_full.values, axis=0)
         assert "invalid dimension" in str(excinfo.value)
 
     def test_std(self: TestDataArray, da_full: DataArray) -> None:
@@ -176,5 +176,5 @@ class TestDataArray:
             da_full.values, ddof=1
         )
         with pytest.raises(ValueError, match="invalid dimension") as excinfo:
-            da_full.std(dim="Z").values, np.std(da_full.values, axis=0)
+            _ = da_full.std(dim="Z").values, np.std(da_full.values, axis=0)
         assert "invalid dimension" in str(excinfo.value)

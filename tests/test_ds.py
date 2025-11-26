@@ -22,7 +22,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pyxarr import DataArray, Dataset
+from pyxarr import Coords, DataArray, Dataset
 
 
 class TestDataset:
@@ -68,6 +68,8 @@ class TestDataset:
         ds_add["foo"] = da_full
         ds_add["bar"] = da_ones
         ds_dict = Dataset({"foo": da_full, "bar": da_ones})
+        assert isinstance(ds_add.coords, Coords)
+        assert isinstance(ds_dict.coords, Coords)
         assert ds_add == ds_dict
         ds_add = Dataset()
         ds_add["fff"] = da_full

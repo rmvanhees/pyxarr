@@ -141,9 +141,22 @@ class Coords:
         """Return False if object is empty."""
         return bool(self.coords)
 
-    def __contains__(self: Coords, name: str) -> bool:
-        """Return True when item is member of object."""
-        return any(name == coord.name for coord in self.coords)
+    def __contains__(self: Coords, key: str | _Coord) -> bool:
+        """Return True when item is member of object.
+
+        Parameters
+        ----------
+        key :  str | _Coord
+           Check only on coordinate name or check on the _Coord object
+
+        Returns
+        -------
+        True when coordinate is present in the Coordinates
+        """
+        if isinstance(key, str):
+            return any(key == coord.name for coord in self.coords)
+
+        return any(key == coord for coord in self.coords)
 
     def __eq__(self: Coords, other: Coords) -> bool:
         """Return True if both objects are equal."""
