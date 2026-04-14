@@ -3,7 +3,7 @@
 #
 #     https://github.com/rmvanhees/pyxarr.git
 #
-# Copyright (c) 2025 - R.M. van Hees (SRON)
+# Copyright (c) 2025-2026 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, NotRequired, TypedDict, Unpack
 
 import numpy as np
 
-from . import DataArray
+from . import DataArray, Dataset
 
 if TYPE_CHECKING:
     import h5py
@@ -119,7 +119,7 @@ def write_data_array(
 # - main function ----------------------------------
 def dset_to_h5(
     fid: h5py.File,
-    xarr: DataArray,
+    xds: DataArray | Dataset,
     *,
     group: str | None = None,
     **kwargs: Unpack[H5DsetKeys],
@@ -130,7 +130,7 @@ def dset_to_h5(
     ----------
     fid :  h5py.File | h5py.Group
        HDF5 file or group instance
-    xarr :  DataArray | Dataset
+    xds :  DataArray | Dataset
        pyxarr DataArray or Dataset instance
     group :  str, optional
        Name of the HDF5 group where the data should be stored
@@ -139,11 +139,15 @@ def dset_to_h5(
        and shuffle
 
     """
-    if not isinstance(xarr, DataArray):
+    if not isinstance(xds, (DataArray, Dataset)):
         raise ValueError()
 
     if fid.mode not in ("r+", "w"):
         raise PermissionError("File not opened in write or append mode")
 
     gid = fid if group is None else fid.require_group(group)
-    write_data_array(gid, xarr, **kwargs)
+    if isinstance(xds, DataArray):
+        write_data_array(gid, xds, **kwargs)
+    else:
+        for key in xds:
+            write_data_array(gid, xds[key], **kwargs)

@@ -3,7 +3,7 @@
 #
 #     https://github.com/rmvanhees/pyxarr.git
 #
-# Copyright (c) 2025 - R.M. van Hees (SRON)
+# Copyright (c) 2025-2026 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,13 +25,17 @@ from __future__ import annotations
 __all__ = ["DataArray"]
 
 from dataclasses import KW_ONLY, dataclass, field
+from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
 import numpy as np
+from h5yaml.nc_create import NcCreate
 
 from .coords import Coords
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from numpy.typing import NDArray
 
 # - global parameters -------------------------
@@ -228,6 +232,77 @@ class DataArray:
             return self.values.size
         except AttributeError:
             return None
+
+    def asdict(self: DataArray, group: None | str = None) -> dict:
+        """Return DataArray as dictionary."""
+        grp_path = PosixPath("") if group is None else PosixPath("/", group)
+
+        res = {"compounds": {}}
+        res["dimensions"] = {
+            str(grp_path / coord.name): {
+                "_dtype": coord.values.dtype,
+                "_size": coord.values.size,
+            }
+            for coord in self.coords
+        }
+
+        # check if the data-type is compound
+        var_name = str(grp_path / self.name)
+        if self.values.dtype.names is not None:
+            cmp_name = f"{var_name}_dtype"
+            res["compounds"] = {
+                cmp_name: {v[0]: v[1:] for v in self.values.dtype.descr}
+            }
+            res["variables"] = {
+                var_name: {
+                    "_dtype": cmp_name,
+                    "_dims": self.dims,
+                }
+            }
+        else:
+            res["variables"] = {
+                var_name: {
+                    "_dtype": self.values.dtype,
+                    "_dims": self.dims,
+                }
+            }
+
+        res["variables"][var_name] |= self.attrs
+
+        return res
+
+    def to_netcdf(
+        self: DataArray,
+        path: None | str | Path = None,
+        mode: str = "w",
+        group: None | str = None,
+        attrs_group: None | dict = None,
+    ) -> None:
+        """Write DataArray contents to netCDF4 file.
+
+        Parameters
+        ----------
+        path :  Path, default=None
+           Path to store the DataArray as variable and its dimensions
+        mode :  {"w", "a"}, default="w"
+           Currently appand mode is not supported
+        group : str, default=None
+           Store data in a netCDF4 group
+        attrs_group :  dict, default=None
+           Provide attributes of the netCDF4 group, each attribute must be defined
+           relative to root e.g. f'/{group}/{attr}'
+
+        """
+        if mode != "w":
+            raise NotImplementedError("Append mode not implemented")
+
+        da_dict = self.asdict(group)
+        if group is not None:
+            da_dict["groups"] = group
+            if attrs_group is not None:
+                da_dict["attrs_groups"] |= attrs_group
+
+        NcCreate(**da_dict).create(path)
 
     def swap_dims(self: DataArray, aux_dim: str, co_dim: str) -> None:
         """Promote an auxiliary coordinate to a dimension coordinate.

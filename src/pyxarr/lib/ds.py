@@ -3,7 +3,7 @@
 #
 #     https://github.com/rmvanhees/pyxarr.git
 #
-# Copyright (c) 2025 - R.M. van Hees (SRON)
+# Copyright (c) 2025-2026 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,11 +25,16 @@ from __future__ import annotations
 __all__ = ["Dataset"]
 
 from dataclasses import KW_ONLY, dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
+from h5yaml.nc_create import NcCreate
 
 from .coords import Coords
 from .da import DataArray
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # - global parameters -------------------------
 
@@ -81,6 +86,8 @@ class Dataset:
         msg += "\nData variables:"
         if self.group:
             for key, dset in self.group.items():
+                if key in self.coords:
+                    continue
                 nbytes = dset.values.nbytes
                 for prefix in ["", "k", "M", "G", "T"]:
                     if nbytes < 1000:
@@ -142,3 +149,52 @@ class Dataset:
                 self.dims += (coord.name,)
 
         self.group[name] = xda
+
+    def asdict(self: Dataset, group: None | str = None) -> dict:
+        """Return Dataset as dictionary."""
+        res = {
+            "dimensions": {},
+            "compounds": {},
+            "variables": {},
+            "attrs_global": self.attrs,
+        }
+        for darr in self.group.values():
+            da_dict = darr.asdict(group)
+            res["dimensions"] |= da_dict["dimensions"]
+            res["compounds"] |= da_dict["compounds"]
+            res["variables"] |= da_dict["variables"]
+
+        return res
+
+    def to_netcdf(
+        self: Dataset,
+        path: None | str | Path = None,
+        mode: str = "w",
+        group: None | str = None,
+        attrs_group: None | dict = None,
+    ) -> None:
+        """Write Dataset contents to netCDF4 file.
+
+        Parameters
+        ----------
+        path :  Path, default=None
+           Path to store the Dataset as variables and its dimensions
+        mode :  {"w", "a"}, default="w"
+           Currently appand mode is not supported
+        group : str, default=None
+           Store data in a netCDF4 group
+        attrs_group :  dict, default=None
+           Provide attributes of the netCDF4 group, each attribute must be defined
+           relative to root e.g. f'/{group}/{attr}'
+
+        """
+        if mode != "w":
+            raise NotImplementedError("Append mode not implemented")
+
+        ds_dict = self.asdict(group)
+        if group is not None:
+            ds_dict["groups"] = group
+            if attrs_group is not None:
+                ds_dict["attrs_groups"] = attrs_group
+
+        NcCreate(**ds_dict).create(path)
