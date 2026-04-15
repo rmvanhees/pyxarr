@@ -234,10 +234,19 @@ class DataArray:
             return None
 
     def asdict(self: DataArray, group: None | str = None) -> dict:
-        """Return DataArray as dictionary."""
+        """Return DataArray as dictionary.
+
+        Parameters
+        ----------
+        group : str, default=None
+           Store data in a netCDF4 group
+
+        """
         grp_path = PosixPath("") if group is None else PosixPath("/", group)
 
         res = {"compounds": {}}
+        if group is not None:
+            res["groups"] = [str(grp_path)]
         res["dimensions"] = {
             str(grp_path / coord.name): {
                 "_dtype": coord.values.dtype,
@@ -256,14 +265,24 @@ class DataArray:
             res["variables"] = {
                 var_name: {
                     "_dtype": cmp_name,
-                    "_dims": self.dims,
+                    "_dims": (
+                        self.dims
+                        if group is None
+                        else [str(grp_path / x) for x in self.dims]
+                    ),
+                    "_values": self.values,
                 }
             }
         else:
             res["variables"] = {
                 var_name: {
                     "_dtype": self.values.dtype,
-                    "_dims": self.dims,
+                    "_dims": (
+                        self.dims
+                        if group is None
+                        else [str(grp_path / x) for x in self.dims]
+                    ),
+                    "_values": self.values,
                 }
             }
 
@@ -297,10 +316,8 @@ class DataArray:
             raise NotImplementedError("Append mode not implemented")
 
         da_dict = self.asdict(group)
-        if group is not None:
-            da_dict["groups"] = group
-            if attrs_group is not None:
-                da_dict["attrs_groups"] |= attrs_group
+        if group is not None and attrs_group is not None:
+            da_dict["attrs_groups"] = attrs_group
 
         NcCreate(**da_dict).create(path)
 

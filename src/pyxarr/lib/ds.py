@@ -25,6 +25,7 @@ from __future__ import annotations
 __all__ = ["Dataset"]
 
 from dataclasses import KW_ONLY, dataclass, field
+from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -151,13 +152,22 @@ class Dataset:
         self.group[name] = xda
 
     def asdict(self: Dataset, group: None | str = None) -> dict:
-        """Return Dataset as dictionary."""
+        """Return Dataset as dictionary.
+
+        Parameters
+        ----------
+        group : str, default=None
+           Store data in a netCDF4 group
+
+        """
         res = {
             "dimensions": {},
             "compounds": {},
             "variables": {},
             "attrs_global": self.attrs,
         }
+        if group is not None:
+            res["groups"] = [str(PosixPath("/", group))]
         for darr in self.group.values():
             da_dict = darr.asdict(group)
             res["dimensions"] |= da_dict["dimensions"]
@@ -192,9 +202,7 @@ class Dataset:
             raise NotImplementedError("Append mode not implemented")
 
         ds_dict = self.asdict(group)
-        if group is not None:
-            ds_dict["groups"] = group
-            if attrs_group is not None:
-                ds_dict["attrs_groups"] = attrs_group
+        if group is not None and attrs_group is not None:
+            ds_dict["attrs_groups"] = attrs_group
 
         NcCreate(**ds_dict).create(path)
