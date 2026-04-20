@@ -20,8 +20,25 @@
 #
 """A minimal and light-weight class to work with multi-dimensional labeled arrays."""
 
-__all__ = ["Coords", "DataArray", "Dataset"]
+from __future__ import annotations
+
+__all__ = ["Coords", "DataArray", "Dataset", "sw_version"]
+
+import contextlib
+from importlib.metadata import PackageNotFoundError, version
 
 from .lib.coords import Coords
 from .lib.da import DataArray
 from .lib.ds import Dataset
+
+__version__ = "0.0.0"
+with contextlib.suppress(PackageNotFoundError):
+    __version__ = version(__name__)
+
+
+def sw_version(full: bool = False) -> str:
+    """Return the software version as obtained from git."""
+    if full:
+        return __version__
+
+    return __version__.split("+")[0]
