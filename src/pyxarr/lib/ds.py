@@ -29,7 +29,7 @@ from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
 import numpy as np
-from h5yaml.nc_create import NcCreate
+from h5yaml.template_nc import TemplateNc
 
 from .coords import Coords
 from .da import DataArray
@@ -205,4 +205,4 @@ class Dataset:
         if group is not None and attrs_group is not None:
             ds_dict["attrs_groups"] = attrs_group
 
-        NcCreate(**ds_dict).create(path)
+        TemplateNc(nc_dict=ds_dict).create(path)

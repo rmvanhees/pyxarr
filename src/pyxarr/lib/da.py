@@ -29,7 +29,7 @@ from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
 import numpy as np
-from h5yaml.nc_create import NcCreate
+from h5yaml.template_nc import TemplateNc
 
 from .coords import Coords
 
@@ -319,7 +319,7 @@ class DataArray:
         if group is not None and attrs_group is not None:
             da_dict["attrs_groups"] = attrs_group
 
-        NcCreate(**da_dict).create(path)
+        TemplateNc(nc_dict=da_dict).create(path)
 
     def swap_dims(self: DataArray, aux_dim: str, co_dim: str) -> None:
         """Promote an auxiliary coordinate to a dimension coordinate.
