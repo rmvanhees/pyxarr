@@ -30,7 +30,7 @@ dynamic = [
 ]
 dependencies = [
   "h5py>=3.11",
-  "h5yaml>0.5",
+  "h5yaml>=0.5",
   "numpy>=2.0",
 ]
 
