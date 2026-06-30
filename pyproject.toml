@@ -29,7 +29,7 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "h5py>=3.11",
+  "h5py>=3.14",
   "h5yaml>=0.5",
   "numpy>=2.0",
 ]
@@ -42,10 +42,10 @@ test = ["pytest-cov >= 7.0"]
 
 [project.urls]
 homepage = "https://github.com/rmvanhees/pyxarr"
-# documentation = "https://pyxarr.readthedocs.io/en/latest/"
 Source = "https://github.com/rmvanhees/pyxarr"
-# Changelog = "https://github.com/rmvanhees/pyxarr/HISTORY.rst"
 "Issue tracker" = "https://github.com/rmvanhees/pyxarr/issues"
+# Changelog = "https://github.com/rmvanhees/pyxarr/HISTORY.rst"
+# Documentation = "https://pyxarr.readthedocs.io/en/latest/"
 
 [tool.hatch.version]
 source = "versioningit"
@@ -62,11 +62,19 @@ distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-addopts = "--import-mode=importlib --cov=pyxarr --cov-report=xml --cov-report=term"
+addopts = "--import-mode=importlib --cov=pyxarr --cov-report=term"
 strict = true
 
 [tool.coverage.run]
 # branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+exclude_also = [
+    # 1. Comments to turn coverage on and off:
+    'no cover: start(?s:.)*?no cover: stop',
+]
 
 [tool.ruff]
 line-length = 88

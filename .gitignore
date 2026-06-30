@@ -12,5 +12,8 @@
 .eggs
 *.egg-info
 
+.coverage
+coverage.xml
+
 .idea/
 venv/

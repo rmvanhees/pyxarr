@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from h5yaml.template_nc import TemplateNc
 
+# from h5yaml.template_h5 import TemplateH5
 from .coords import Coords
 
 if TYPE_CHECKING:
@@ -249,7 +250,7 @@ class DataArray:
             res["groups"] = [str(grp_path)]
         res["dimensions"] = {
             str(grp_path / coord.name): {
-                "_dtype": coord.values.dtype,
+                "_dtype": coord.values.dtype.str,
                 "_size": coord.values.size,
             }
             for coord in self.coords
@@ -276,7 +277,7 @@ class DataArray:
         else:
             res["variables"] = {
                 var_name: {
-                    "_dtype": self.values.dtype,
+                    "_dtype": self.values.dtype.str,
                     "_dims": (
                         self.dims
                         if group is None
