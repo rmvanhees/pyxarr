@@ -1,6 +1,9 @@
+#
+# This file is part of Python package: `pyxarr`
+#
 #     https://github.com/rmvanhees/pyxarr.git
 #
-# Copyright (c) 2025 - R.M. van Hees (SRON)
+# Copyright (c) 2025-2026 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +22,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -33,32 +38,62 @@ class TestDataset:
         assert not bool(Dataset())
         assert len(Dataset()) == 0
         assert "scalar" not in Dataset()
+        assert not Dataset().asdict()
 
     def test_scalar(self: TestDataset, da_scalar: DataArray) -> None:
         """Unit-test for Dataset with scalar DataArray."""
         ds_scalar = Dataset({"scalar": da_scalar})
-        print(ds_scalar)
         assert bool(ds_scalar)
         assert len(ds_scalar) == 1
         assert "scalar" in ds_scalar
+        assert not ds_scalar.asdict()["dimensions"]
+        assert "compounds" not in ds_scalar.asdict()
+        assert "scalar" in ds_scalar.asdict()["variables"]
+        assert "groups" not in ds_scalar.asdict()
+        assert "scalar" in ds_scalar.asdict()["variables"]
+        assert "/GROUP" in ds_scalar.asdict("/GROUP")["groups"]
+        assert "/GROUP/scalar" in ds_scalar.asdict("/GROUP")["variables"]
 
-    def test_one(self: TestDataset, da_full: DataArray) -> None:
-        """Unit-test for Dataset with one 3-D DataArray."""
-        ds_full = Dataset({"foo": da_full})
-        assert bool(ds_full)
-        assert len(ds_full) == 1
-        for key in ds_full:
-            assert key in ds_full
-        assert "fff" not in ds_full
+    def test_cmp(self: TestDataset, da_compound: DataArray) -> None:
+        """Unit-test for DataArray with structured array."""
+        ds_compound = Dataset({"foo": da_compound})
+        assert bool(ds_compound)
+        assert len(ds_compound) == 1
+        assert "foo" in ds_compound
+        assert "orbit" in ds_compound.asdict()["dimensions"]
+        assert "compound_arr_dtype" in ds_compound.asdict()["compounds"]
+        assert "groups" not in ds_compound.asdict()
+        assert "foo" in ds_compound.asdict()["variables"]
+        assert "/GROUP" in ds_compound.asdict("/GROUP")["groups"]
+        assert "/GROUP/foo" in ds_compound.asdict("/GROUP")["variables"]
 
     def test_two(self: TestDataset, da_full: DataArray, da_ones: DataArray) -> None:
         """Unit-test for Dataset with two 3-D DataArray."""
-        ds_full = Dataset({"foo": da_full, "bar": da_ones})
-        assert bool(ds_full)
-        assert len(ds_full) == 2
-        assert "bar" in ds_full
-        assert ds_full["bar"] == da_ones
-        assert ds_full["scalar"] is None
+        ds_two = Dataset({"foo": da_full, "bar": da_ones})
+        assert bool(ds_two)
+        assert len(ds_two) == 2
+        assert "bar" in ds_two
+        assert ds_two["bar"] == da_ones
+        assert ds_two["scalar"] is None
+        assert "orbit" in ds_two.asdict()["dimensions"]
+        assert "foo" in ds_two.asdict()["variables"]
+        assert "bar" in ds_two.asdict()["variables"]
+        assert "groups" not in ds_two.asdict()
+        assert "/GROUP" in ds_two.asdict("/GROUP")["groups"]
+        assert "/GROUP/orbit" in ds_two.asdict("/GROUP")["dimensions"]
+        assert "/GROUP/foo" in ds_two.asdict("/GROUP")["variables"]
+        ds_two.to_netcdf("test_two1.nc")
+        Path("test_two1.nc").unlink()
+        ds_two.to_netcdf("test_two2.nc", group="/GROUP")
+        Path("test_two2.nc").unlink()
+        ds_two.to_netcdf(
+            "test_two3.nc",
+            group="/GROUP",
+            attrs_group={
+                "/GROUP/title": "data from DataArrays 'da_full' and 'da_ones'"
+            },
+        )
+        Path("test_two3.nc").unlink()
 
     def test_creation(
         self: TestDataset, da_full: DataArray, da_ones: DataArray

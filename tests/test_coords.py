@@ -1,6 +1,9 @@
+#
+# This file is part of Python package: `pyxarr`
+#
 #     https://github.com/rmvanhees/pyxarr.git
 #
-# Copyright (c) 2025 - R.M. van Hees (SRON)
+# Copyright (c) 2025-2026 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,8 +45,11 @@ class TestCoord:
         """Unit-test for getitem method."""
         indx = 11
         assert len(co_struct[indx]) == 1
+        assert len(co_struct[3:7]) == 4
+        assert np.sum(co_struct[3:7].values) == 18
         mask = np.array(3 * [False] + 3 * [True] + 7 * [False], dtype=bool)
         assert len(co_struct[mask]) == 3
+        assert np.sum(co_struct[mask].values) == 12
 
     def test_setitem(self: TestCoord, co_struct: _Coord) -> None:
         """Unit-test for setitem method."""
@@ -74,10 +80,11 @@ class TestCoords:
     def test_contains(self: TestCoords, co_from_dict: Coords) -> None:
         """Unit-test for contains method."""
         assert "x" not in Coords()
+        assert "x" not in co_from_dict
         assert "time" in co_from_dict
         assert "row" in co_from_dict
         assert "column" in co_from_dict
-        assert "x" not in co_from_dict
+        assert co_from_dict["column"] in co_from_dict
 
     def test_eq(self: TestCoords, co_from_dict: Coords) -> None:
         """Unit-test for len method."""

@@ -28,10 +28,10 @@ from dataclasses import KW_ONLY, dataclass, field
 from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
+import netCDF4
 import numpy as np
 from h5yaml.template_nc import TemplateNc
 
-# from h5yaml.template_h5 import TemplateH5
 from .coords import Coords
 
 if TYPE_CHECKING:
@@ -243,11 +243,14 @@ class DataArray:
            Store data in a netCDF4 group
 
         """
-        grp_path = PosixPath("") if group is None else PosixPath("/", group)
+        res = {}
+        if not bool(self):
+            return res
 
-        res = {"compounds": {}}
+        grp_path = PosixPath("") if group is None else PosixPath("/", group)
         if group is not None:
             res["groups"] = [str(grp_path)]
+
         res["dimensions"] = {
             str(grp_path / coord.name): {
                 "_dtype": coord.values.dtype.str,
@@ -318,9 +321,13 @@ class DataArray:
 
         da_dict = self.asdict(group)
         if group is not None and attrs_group is not None:
-            da_dict["attrs_groups"] = attrs_group
+            da_dict[str(PosixPath(group) / "attrs_groups")] = attrs_group
 
         TemplateNc(nc_dict=da_dict).create(path)
+        # pylint: disable=no-member
+        with netCDF4.Dataset(path, "r+") as fid:
+            var_name = self.name if group is None else str(PosixPath(group) / self.name)
+            fid[var_name][:] = self.values
 
     def swap_dims(self: DataArray, aux_dim: str, co_dim: str) -> None:
         """Promote an auxiliary coordinate to a dimension coordinate.

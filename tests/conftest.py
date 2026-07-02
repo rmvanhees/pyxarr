@@ -1,3 +1,9 @@
+#
+# This file is part of Python package: `pyxarr`
+#
+#     https://github.com/rmvanhees/pyxarr.git
+#
+# Copyright (c) 2025-2026 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,21 +78,36 @@ def da_scalar() -> DataArray:
 
 @pytest.fixture
 def da_full() -> DataArray:
-    """Return instance of class DataArray with 3 dimensions."""
+    """Return instance of class DataArray with 3 dimensions (dtype float)."""
     return DataArray(
         np.arange(5 * 11 * 17, dtype=float).reshape(5, 11, 17),
         dims=("orbit", "Y", "X"),
-        name="threeDims",
+        name="range_arr_float",
+        attrs={
+            "long_name": "numpy.arange",
+            "units": "1",
+        },
     )
 
 
 @pytest.fixture
 def da_ones() -> DataArray:
-    """Return instance of class DataArray with 3 dimensions."""
+    """Return instance of class DataArray with 3 dimensions (dtype int)."""
     return DataArray(
-        np.ones((5, 11, 17), dtype=float),
+        np.ones((5, 11, 17), dtype=int),
         dims=("orbit", "Y", "X"),
-        name="threeDims(ones)",
+        name="ones_arr_int",
+    )
+
+
+@pytest.fixture
+def da_compound() -> DataArray:
+    """Return instance of class DataArray with compound data."""
+    cmp_dtype = np.dtype([("lon", "f8"), ("lat", "f8")])
+    return DataArray(
+        np.array([(0, 0), (10, 54), (165, -54)], dtype=cmp_dtype),
+        dims=("orbit",),
+        name="compound_arr",
     )
 
 

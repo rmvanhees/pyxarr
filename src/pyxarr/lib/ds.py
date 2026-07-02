@@ -28,6 +28,7 @@ from dataclasses import KW_ONLY, dataclass, field
 from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
+import netCDF4
 import numpy as np
 from h5yaml.template_nc import TemplateNc
 
@@ -47,7 +48,7 @@ class Dataset:
 
     Parameters
     ----------
-    group :  dict[str, DataArray], optional
+    data_vars :  dict[str, DataArray], optional
       dictionary of a set multi-dimensional arrays and their names
     coords :  Coords, optional
       common coordinates of each of the DataArrays
@@ -56,7 +57,7 @@ class Dataset:
 
     """
 
-    group: dict[str, DataArray] = field(default_factory=dict)
+    data_vars: dict[str, DataArray] = field(default_factory=dict)
     _: KW_ONLY
     attrs: dict = field(default_factory=dict)
     coords: Coords = field(default_factory=Coords, init=False)
@@ -66,7 +67,7 @@ class Dataset:
         """Define dimensions and coordinates of the new Dataset."""
         self.coords = Coords()
         self.dims = ()
-        for da in self.group.values():
+        for da in self.data_vars.values():
             for coord in da.coords:
                 if coord not in self.coords:
                     self.coords += coord
@@ -85,8 +86,8 @@ class Dataset:
                 for coord in self.coords:
                     msg += f"\n  * {coord.name:8s} {coord.values.dtype} {coord.values}"
         msg += "\nData variables:"
-        if self.group:
-            for key, dset in self.group.items():
+        if self.data_vars:
+            for key, dset in self.data_vars.items():
                 if key in self.coords:
                     continue
                 nbytes = dset.values.nbytes
@@ -108,26 +109,26 @@ class Dataset:
 
     def __bool__(self: Dataset) -> bool:
         """Return False if Dataset is empty."""
-        return bool(self.group)
+        return bool(self.data_vars)
 
     def __len__(self: Dataset) -> int:
         """Return number of DataArrays."""
-        return len(self.group)
+        return len(self.data_vars)
 
     def __contains__(self: Dataset, name: str) -> bool:
         """Return True when item exists."""
-        return name in self.group
+        return name in self.data_vars
 
     def __iter__(self: Dataset) -> dict:
         """Return an iterator object."""
-        return iter(self.group)
+        return iter(self.data_vars)
 
     def __eq__(self: Dataset, other: Dataset) -> bool:
         """Return True if both objects are equal."""
-        if self.group.keys() != other.group.keys():
+        if self.data_vars.keys() != other.data_vars.keys():
             return False
 
-        for key in self.group:
+        for key in self.data_vars:
             if not self[key] == other[key]:
                 return False
 
@@ -135,8 +136,8 @@ class Dataset:
 
     def __getitem__(self: Dataset, name: str) -> DataArray | None:
         """Return DataArray with given name."""
-        if name in self.group:
-            return self.group[name]
+        if name in self.data_vars:
+            return self.data_vars[name]
         return None
 
     def __setitem__(self: Dataset, name: str, xda: DataArray) -> None:
@@ -149,7 +150,7 @@ class Dataset:
                 self.coords += coord
                 self.dims += (coord.name,)
 
-        self.group[name] = xda
+        self.data_vars[name] = xda
 
     def asdict(self: Dataset, group: None | str = None) -> dict:
         """Return Dataset as dictionary.
@@ -160,20 +161,31 @@ class Dataset:
            Store data in a netCDF4 group
 
         """
+        if not bool(self):
+            return {}
+
         res = {
             "dimensions": {},
             "compounds": {},
             "variables": {},
             "attrs_global": self.attrs,
         }
+
+        grp_path = PosixPath("") if group is None else PosixPath("/", group)
         if group is not None:
-            res["groups"] = [str(PosixPath("/", group))]
-        for darr in self.group.values():
+            res["groups"] = [str(grp_path)]
+
+        for name, darr in self.data_vars.items():
             da_dict = darr.asdict(group)
             res["dimensions"] |= da_dict["dimensions"]
-            res["compounds"] |= da_dict["compounds"]
-            res["variables"] |= da_dict["variables"]
+            if "compounds" in da_dict:
+                res["compounds"] |= da_dict["compounds"]
+            res["variables"][str(grp_path / name)] = next(
+                iter(da_dict["variables"].values())
+            )
 
+        if not res["compounds"]:
+            del res["compounds"]
         return res
 
     def to_netcdf(
@@ -206,3 +218,11 @@ class Dataset:
             ds_dict["attrs_groups"] = attrs_group
 
         TemplateNc(nc_dict=ds_dict).create(path)
+        # pylint: disable=no-member
+        with netCDF4.Dataset(path, "r+") as fid:
+            if group is None:
+                for key, xarr in self.data_vars.items():
+                    fid[key][:] = next(iter(xarr.values))
+            else:
+                for key, xarr in self.data_vars.items():
+                    fid[group][key][:] = next(iter(xarr.values))

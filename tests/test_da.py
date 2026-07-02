@@ -1,6 +1,9 @@
+#
+# This file is part of Python package: `pyxarr`
+#
 #     https://github.com/rmvanhees/pyxarr.git
 #
-# Copyright (c) 2025 - R.M. van Hees (SRON)
+# Copyright (c) 2025-2026 - R.M. van Hees (SRON)
 #    All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +39,7 @@ class TestDataArray:
         assert len(DataArray()) == 0
         assert DataArray().shape is None
         assert DataArray().size is None
+        assert not DataArray().asdict()
 
     def test_scalar(self: TestDataArray, da_scalar: DataArray) -> None:
         """Unit-test for DataArray with scalar."""
@@ -43,6 +47,26 @@ class TestDataArray:
         assert len(da_scalar) == 0
         assert da_scalar.shape == ()
         assert da_scalar.size == 1
+        assert not da_scalar.asdict()["dimensions"]
+        assert "compounds" not in da_scalar.asdict()
+        assert "scalar" in da_scalar.asdict()["variables"]
+        assert "groups" not in da_scalar.asdict()
+        assert "scalar" in da_scalar.asdict()["variables"]
+        assert "/GROUP" in da_scalar.asdict("/GROUP")["groups"]
+        assert "/GROUP/scalar" in da_scalar.asdict("/GROUP")["variables"]
+
+    def test_cmp(self: TestDataArray, da_compound: DataArray) -> None:
+        """Unit-test for DataArray with structured array."""
+        assert bool(da_compound)
+        assert len(da_compound) == 3
+        assert da_compound.shape == (3,)
+        assert da_compound.size == 3
+        assert "orbit" in da_compound.asdict()["dimensions"]
+        assert "compound_arr_dtype" in da_compound.asdict()["compounds"]
+        assert "groups" not in da_compound.asdict()
+        assert "compound_arr" in da_compound.asdict()["variables"]
+        assert "/GROUP" in da_compound.asdict("/GROUP")["groups"]
+        assert "/GROUP/compound_arr" in da_compound.asdict("/GROUP")["variables"]
 
     def test_full(self: TestDataArray, da_full: DataArray) -> None:
         """Unit-test for DataArray with 3-D dataset."""
@@ -50,6 +74,13 @@ class TestDataArray:
         assert len(da_full) == 5
         assert da_full.shape == (5, 11, 17)
         assert da_full.size == 5 * 11 * 17
+        da_full.to_netcdf("test_full.nc")
+        da_full.to_netcdf("test_full.nc", group="/GROUP")
+        da_full.to_netcdf(
+            "test_full.nc",
+            group="/GROUP",
+            attrs_group={"title": "data from DataArray 'da_full'"},
+        )
 
     def test_creation(
         self: TestDataArray,
