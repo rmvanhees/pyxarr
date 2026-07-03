@@ -62,7 +62,6 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict[str, Any]:
             }
         except Exception as exc:
             raise RuntimeError(f"field {field} not in dataset {dset.name}") from exc
-        # print('_field ', _field)
 
     attrs = {}
     for key in dset.attrs:
@@ -125,6 +124,7 @@ def __get_coords(
             # find dimension scale and obtain it attributes
             co_grp = dset.parent
             while name not in co_grp:
+                # print(name, dim, co_grp, co_grp.parent)
                 if co_grp == co_grp.parent:
                     raise RuntimeError("can't find dimension scale")
                 co_grp = co_grp.parent
@@ -141,7 +141,7 @@ def __get_coords(
             name = name.split(" ")[0]
 
         data = co_dset[:]
-        coord_attrs = __get_attrs(co_grp[name], None)
+        coord_attrs = __get_attrs(co_dset, None)
         if (
             time_units is not None
             and "units" in coord_attrs
@@ -154,17 +154,17 @@ def __get_coords(
             )
             match time_units:
                 case "ns":
-                    values += np.rint(1e9 * data).astype(f"timedelta64{time_units}")
+                    values += np.rint(1e9 * data).astype(f"timedelta64[{time_units}]")
                 case "us":
-                    values += np.rint(1e6 * data).astype(f"timedelta64{time_units}")
+                    values += np.rint(1e6 * data).astype(f"timedelta64[{time_units}]")
                 case "ms":
-                    values += np.rint(1e3 * data).astype(f"timedelta64{time_units}")
+                    values += np.rint(1e3 * data).astype(f"timedelta64[{time_units}]")
                 case "s":
                     values += np.rint(data).astype(f"timedelta64[{time_units}]")
                 case "D" if coord_attrs["units"].startswith("days since"):
                     values += np.rint(data).astype(f"timedelta64[{time_units}]")
                 case _:
-                    raise KeyError("unknown numpy.timedelta64 unit")
+                    raise KeyError(f"unknown numpy.timedelta64 unit: '{time_units}'")
 
             data = values
 
@@ -233,22 +233,10 @@ def __get_data(
     Read floats always as doubles
 
     """
-    if data_sel is None:
-        data_sel = ()
-
-    if np.issubdtype(dset.dtype, np.floating):
-        data = dset.astype(float)[data_sel]
-        data[data == float.fromhex("0x1.ep+122")] = np.nan
-        return data
-
     if field is None:
-        return dset[data_sel]
+        return dset[() if data_sel is None else data_sel]
 
-    data = dset.fields(field)[data_sel]
-    if np.issubdtype(data.dtype, np.floating):
-        data = data.astype(float)
-        data[data == float.fromhex("0x1.ep+122")] = np.nan
-    return data
+    return dset.fields(field)[() if data_sel is None else data_sel]
 
 
 def __check_selection(data_sel: slice | tuple | int, ndim: int) -> slice | tuple | None:
@@ -367,10 +355,9 @@ def dset_from_h5(
 
     # get values for the dataset
     data = __get_data(h5_dset, data_sel, field)
-    # print(f"data: {data.ndim}, {data.shape}")
 
     # - check if dimension of dataset and coordinates agree
-    if data.ndim < len(coords):
+    if len(coords) > 0 and data.ndim < len(coords):
         for ii in reversed(range(len(coords))):
             if np.isscalar(coords[ii][1]):
                 del coords[ii]
