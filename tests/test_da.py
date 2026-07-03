@@ -22,7 +22,9 @@
 
 from __future__ import annotations
 
+import os
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -74,10 +76,11 @@ class TestDataArray:
         assert len(da_full) == 5
         assert da_full.shape == (5, 11, 17)
         assert da_full.size == 5 * 11 * 17
-        da_full.to_netcdf("test_full.nc")
-        da_full.to_netcdf("test_full.nc", group="/GROUP")
+        temp_dir = Path(os.getenv("RUNNER_TEMP", "."))
+        da_full.to_netcdf(temp_dir / "test_full.nc")
+        da_full.to_netcdf(temp_dir / "test_full.nc", group="/GROUP")
         da_full.to_netcdf(
-            "test_full.nc",
+            temp_dir / "test_full.nc",
             group="/GROUP",
             attrs_group={"title": "data from DataArray 'da_full'"},
         )

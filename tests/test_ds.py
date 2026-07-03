@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -82,18 +83,16 @@ class TestDataset:
         assert "/GROUP" in ds_two.asdict("/GROUP")["groups"]
         assert "/GROUP/orbit" in ds_two.asdict("/GROUP")["dimensions"]
         assert "/GROUP/foo" in ds_two.asdict("/GROUP")["variables"]
-        ds_two.to_netcdf("test_two1.nc")
-        Path("test_two1.nc").unlink()
-        ds_two.to_netcdf("test_two2.nc", group="/GROUP")
-        Path("test_two2.nc").unlink()
+        temp_dir = Path(os.getenv("RUNNER_TEMP", "."))
+        ds_two.to_netcdf(temp_dir / "test_two1.nc")
+        ds_two.to_netcdf(temp_dir / "test_two2.nc", group="/GROUP")
         ds_two.to_netcdf(
-            "test_two3.nc",
+            temp_dir / "test_two3.nc",
             group="/GROUP",
             attrs_group={
                 "/GROUP/title": "data from DataArrays 'da_full' and 'da_ones'"
             },
         )
-        Path("test_two3.nc").unlink()
 
     def test_creation(
         self: TestDataset, da_full: DataArray, da_ones: DataArray
