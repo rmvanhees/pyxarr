@@ -351,7 +351,7 @@ def dset_from_h5(
             coords_new += coord[sel]
         coords = coords_new
     # print(f"dim_names: {dim_names}")
-    # print(f"coords: {coords}, {len(coords)}")
+    # print(f"1: coords: {coords}, {len(coords)}")
 
     # get values for the dataset
     data = __get_data(h5_dset, data_sel, field)
@@ -364,7 +364,7 @@ def dset_from_h5(
 
     # - remove empty coordinates
     # coords = [(key, val) for key, val in coords if val is not None]
-    # print(f"coords: {coords}")
+    # print(f"2: coords: {coords}")
 
     # get dataset attributes
     attrs = __get_attrs(h5_dset, field)

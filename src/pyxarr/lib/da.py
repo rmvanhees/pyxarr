@@ -92,16 +92,11 @@ class DataArray:
 
         # define coordinates
         if self.coords:
-            if isinstance(self.coords, Coords):
-                self.dims = tuple(x.name for x in self.coords)
-            elif isinstance(self.coords, dict):
-                self.dims = tuple(self.coords.keys())
+            if not isinstance(self.coords, Coords):
                 self.coords = Coords(self.coords)
-            elif isinstance(self.coords, list) and len(self.coords) == self.values.ndim:
-                self.dims = tuple(x for x, _ in self.coords)
-                self.coords = Coords(self.coords)
-            else:
+            if self.coords.ndim != self.values.ndim:
                 raise ValueError("No coordinates or dimensions for each data dimension")
+            self.dims = tuple(x.name for x in self.coords)
         elif self.dims and len(self.dims) == self.values.ndim:
             _val = [list(range(x)) for x in self.values.shape]
             self.coords = Coords(list(zip(self.dims, _val, strict=True)))
@@ -411,7 +406,7 @@ class DataArray:
             np.nanmean(self.values, axis=indx)
             if skipna
             else self.values.mean(axis=indx),
-            coords=Coords(x for x in self.coords if x.name != dim),
+            coords=tuple(x for x in self.coords if x.name != dim),
             attrs=self.attrs.copy(),
             name=self.name,
         )
@@ -449,7 +444,7 @@ class DataArray:
             np.nanmedian(self.values, axis=indx)
             if skipna
             else np.median(self.values, axis=indx),
-            coords=Coords(x for x in self.coords if x.name != dim),
+            coords=tuple(x for x in self.coords if x.name != dim),
             attrs=self.attrs.copy(),
             name=self.name,
         )
@@ -492,7 +487,7 @@ class DataArray:
             np.nanstd(self.values, ddof=ddof, axis=indx)
             if skipna
             else self.values.std(ddof=ddof, axis=indx),
-            coords=Coords(x for x in self.coords if x.name != dim),
+            coords=tuple(x for x in self.coords if x.name != dim),
             attrs=self.attrs.copy(),
             name=self.name,
         )

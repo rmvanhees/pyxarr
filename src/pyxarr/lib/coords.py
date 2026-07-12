@@ -84,13 +84,24 @@ class _Coord:
         """Return selected elements."""
         if isinstance(key, np.ndarray):
             return _Coord(
-                name=self.name, values=np.asarray(self.values)[key], attrs=self.attrs
+                name=self.name,
+                values=np.asarray(self.values)[key],
+                dim_ref=self.dim_ref,
+                attrs=self.attrs
             )
         if isinstance(key, int):
             return _Coord(
-                name=self.name, values=np.asarray([self.values[key]]), attrs=self.attrs
+                name=self.name,
+                values=np.asarray([self.values[key]]),
+                dim_ref=self.dim_ref,
+                attrs=self.attrs
             )
-        return _Coord(name=self.name, values=self.values[key], attrs=self.attrs)
+        return _Coord(
+            name=self.name,
+            values=self.values[key],
+            dim_ref=self.dim_ref,
+            attrs=self.attrs,
+        )
 
     def __setitem__(self: _Coord, key: int | NDArray[bool], values: ArrayLike) -> None:
         """Return selected elements."""
@@ -99,7 +110,10 @@ class _Coord:
     def copy(self: _Coord) -> _Coord:
         """Return deep copy."""
         return _Coord(
-            name=self.name, values=self.values.copy(), attrs=self.attrs.copy()
+            name=self.name,
+            values=self.values.copy(),
+            dim_ref=self.dim_ref,
+            attrs=self.attrs.copy()
         )
 
     @property
