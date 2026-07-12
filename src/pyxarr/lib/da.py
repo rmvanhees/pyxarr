@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+
 # - global parameters -------------------------
 MAX_DIMS = 3  # maximum number of automatically generated dimensions
 
@@ -86,35 +87,26 @@ class DataArray:
 
         # make sure that values are a numpy array
         self.values = np.asarray(self.values)
+        if not self.values.shape:
+            return
 
         # define coordinates
-        if not self.coords:
-            if self.values.ndim > MAX_DIMS:
-                raise KeyError("Please provide coordinates if N-dim > 3")
-            if self.dims and len(self.dims) != self.values.ndim:
-                raise KeyError("Provide a dimension name for each dimension")
-
-            # use dimension names or use default dimension names
-            _keys = (
-                self.dims
-                if self.dims
-                else ("Z", "Y", "X")[MAX_DIMS - self.values.ndim :]
-            )
+        if self.coords:
+            if isinstance(self.coords, Coords):
+                self.dims = tuple(x.name for x in self.coords)
+            elif isinstance(self.coords, dict):
+                self.dims = tuple(self.coords.keys())
+                self.coords = Coords(self.coords)
+            elif isinstance(self.coords, list) and len(self.coords) == self.values.ndim:
+                self.dims = tuple(x for x, _ in self.coords)
+                self.coords = Coords(self.coords)
+            else:
+                raise ValueError("No coordinates or dimensions for each data dimension")
+        elif self.dims and len(self.dims) == self.values.ndim:
             _val = [list(range(x)) for x in self.values.shape]
-            if not self.dims:
-                self.dims = _keys
-            self.coords = Coords(list(zip(_keys, _val, strict=True)))
-        elif isinstance(self.coords, Coords) and not self.dims:
-            self.dims = tuple(x.name for x in self.coords)
-        elif isinstance(self.coords, dict):
-            if not self.dims:
-                self.dims = tuple(x for x in self.coords)
-            self.coords = Coords(self.coords)
-        elif self.dims:
-            self.coords = Coords(list(zip(self.dims, self.coords, strict=True)))
+            self.coords = Coords(list(zip(self.dims, _val, strict=True)))
         else:
-            self.dims = tuple(x for x, _ in self.coords)
-            self.coords = Coords(self.coords)
+            raise ValueError("No coordinates or dimensions for each data dimension")
 
     def __repr__(self: DataArray) -> str:  # pragma: no cover
         """Convert object to string representation."""
@@ -125,15 +117,9 @@ class DataArray:
             ]
         name_str = "\b" if self.name is None else f"{self.name!r}"
         msg = f"<pyxarr.DataArray {name_str} ({', '.join(list_dims)})>"
-        with np.printoptions(threshold=5, floatmode="maxprec"):
-            msg += f"\narray({self.values!r})"
-            if self.coords:
-                msg += "\nCoordinates:"
-                for coord in self.coords:
-                    msg += (
-                        f"\n {'*' if coord.name in self.dims else ' '} "
-                        f"{coord.name:8s} {coord.values.dtype} {coord.values}"
-                    )
+        msg += f"\n{self.values!r})"
+        if self.coords:
+            msg += f"\n{self.coords.__repr__()}"
         if self.attrs:
             msg += "\nAttributes:"
             for key, val in self.attrs.items():
@@ -153,22 +139,44 @@ class DataArray:
             and np.array_equal(self.values, other.values)
         )
 
-    def __getitem__(self: DataArray, keys: int | slice | NDArray[bool]) -> DataArray:
-        """Return selected elements."""
+    def __getitem__(self: DataArray, data_sel: int | slice) -> DataArray | None:
+        """Return selected elements.
+
+        Parameters
+        ----------
+        data_sel :  int | slice
+          data slicing
+
+        """
         # perform loop over dims and perform selection on each coordinate
-        if keys is Ellipsis:
+        new_coords = []
+        if data_sel in (Ellipsis, slice(None, None, None)):
             return self
 
-        new_coords = []
-        for name, key in zip(
-            self.dims,
-            (keys,) if isinstance(keys, np.ndarray) else keys,
-            strict=True,
+        new_sel = ()
+        for name, isel in zip(
+            self.dims, (data_sel,) if self.values.ndim == 1 else data_sel, strict=True
         ):
-            new_coords.append((name, self.coords[name].values[key]))
+            # We need to rebuild new_sel from data_sel,
+            # because data_sel may contain an integer which breaks its coordinate.
+            # This maybe fixed in a next release
+            if isinstance(isel, (int | np.integer)):
+                isel = np.s_[isel : isel + 1]
+            new_sel += (isel,)
+
+            new_coords.append((name, (name, self.coords[name].values[isel])))
+            for co in self.coords:
+                if co.name not in self.dims and co.dim_ref == name:
+                    co_vals = self.coords[co.name].values
+                    new_coords.append(
+                        (
+                            co.name,
+                            (co.dim_ref, None if co_vals is None else co_vals[isel]),
+                        )
+                    )
 
         return DataArray(
-            self.values[keys],
+            self.values[new_sel],
             coords=new_coords,
             name=self.name,
             attrs=self.attrs,
@@ -181,6 +189,47 @@ class DataArray:
             return len(self.values)
         except TypeError:
             return 0
+
+    def sel(self: DataArray, **kwargs: dict[str, NDArray[bool]]) -> DataArray:
+        """Select data along one axis using a boolean array.
+
+        Limitations
+        -----------
+        Works currently only on dimension coordinates.
+
+        """
+        data_sel = ()
+        new_coords = []
+        for name in self.dims:
+            if name in kwargs:
+                # ToDo: kwargs[name] should be a boolean ndarray
+                mask = kwargs[name]
+                data_sel += (kwargs[name],)
+                co_vals = self.coords[name].values
+                new_coords.append(
+                    (name, (name, None if co_vals is None else co_vals[mask]))
+                )
+            elif self.coords[name].is_dimension:
+                data_sel += (slice(None, None, None),)
+                new_coords.append((name, (name, self.coords[name].values)))
+            elif self.coords[name].dim_ref in self.dims:
+                co_vals = self.coords[name].values
+                new_coords.append(
+                    (
+                        name,
+                        (
+                            self.coords[name].dim_ref,
+                            None if co_vals is None else co_vals[mask],
+                        ),
+                    )
+                )
+
+        return DataArray(
+            self.values[data_sel],
+            coords=new_coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
 
     def __add__(self: DataArray, other: DataArray | NDArray) -> DataArray:
         """Return new DataArray with values of other added to current."""
@@ -329,27 +378,6 @@ class DataArray:
             var_name = self.name if group is None else str(PosixPath(group) / self.name)
             fid[var_name][:] = self.values
 
-    def swap_dims(self: DataArray, aux_dim: str, co_dim: str) -> None:
-        """Promote an auxiliary coordinate to a dimension coordinate.
-
-        Parameters
-        ----------
-        aux_dim: str
-           Name of the auxiliary coordinate
-        co_dim: str
-           Name of the dimension coordinate
-
-        """
-        if aux_dim not in self.coords:
-            raise KeyError(f"auxiliary coordinate '{aux_dim}' does not exists")
-        if co_dim not in self.dims:
-            raise KeyError(f"dimensional coordinate '{co_dim}' does not exists")
-        if len(self.coords[co_dim]) != len(self.coords[aux_dim]):
-            raise ValueError(
-                f"length coordinates '{aux_dim}' and '{co_dim}' are not equal"
-            )
-        self.dims = tuple(aux_dim if x == co_dim else x for x in self.dims)
-
     def mean(
         self: DataArray,
         dim: str | None = None,
@@ -369,8 +397,8 @@ class DataArray:
         if dim is None:
             return DataArray(
                 np.nanmean(self.values) if skipna else self.values.mean(),
-                attrs=self.attrs.copy(),
                 coords=(),
+                attrs=self.attrs.copy(),
                 name=self.name,
             )
 
@@ -383,9 +411,8 @@ class DataArray:
             np.nanmean(self.values, axis=indx)
             if skipna
             else self.values.mean(axis=indx),
+            coords=Coords(x for x in self.coords if x.name != dim),
             attrs=self.attrs.copy(),
-            dims=[x.name for x in self.coords if x.name != dim],
-            coords=[x.values.copy() for x in self.coords if x.name != dim],
             name=self.name,
         )
 
@@ -408,8 +435,8 @@ class DataArray:
         if dim is None:
             return DataArray(
                 np.nanmedian(self.values) if skipna else np.median(self.values),
-                attrs=self.attrs.copy(),
                 coords=(),
+                attrs=self.attrs.copy(),
                 name=self.name,
             )
 
@@ -422,9 +449,8 @@ class DataArray:
             np.nanmedian(self.values, axis=indx)
             if skipna
             else np.median(self.values, axis=indx),
+            coords=Coords(x for x in self.coords if x.name != dim),
             attrs=self.attrs.copy(),
-            dims=[x.name for x in self.coords if x.name != dim],
-            coords=[x.values.copy() for x in self.coords if x.name != dim],
             name=self.name,
         )
 
@@ -452,8 +478,8 @@ class DataArray:
                 np.nanstd(self.values, ddof=ddof)
                 if skipna
                 else self.values.std(ddof=ddof),
-                attrs=self.attrs.copy(),
                 coords=(),
+                attrs=self.attrs.copy(),
                 name=self.name,
             )
 
@@ -466,8 +492,7 @@ class DataArray:
             np.nanstd(self.values, ddof=ddof, axis=indx)
             if skipna
             else self.values.std(ddof=ddof, axis=indx),
+            coords=Coords(x for x in self.coords if x.name != dim),
             attrs=self.attrs.copy(),
-            dims=[x.name for x in self.coords if x.name != dim],
-            coords=[x.values.copy() for x in self.coords if x.name != dim],
             name=self.name,
         )

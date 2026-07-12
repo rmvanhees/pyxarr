@@ -33,12 +33,10 @@ class TestCoord:
 
     def test_bool(self: TestCoord, co_struct: _Coord) -> None:
         """Unit-test for bool method."""
-        assert not bool(_Coord())
         assert bool(co_struct)
 
     def test_len(self: TestCoord, co_struct: _Coord) -> None:
         """Unit-test for len method."""
-        assert len(_Coord()) == 0
         assert len(co_struct) == 13
 
     def test_getitem(self: TestCoord, co_struct: _Coord) -> None:

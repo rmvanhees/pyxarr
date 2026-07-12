@@ -43,34 +43,42 @@ class _Coord:
 
     Parameters
     ----------
-    name :  str, optional
+    name :  str
       name of the coordinate
-    values :  ArrayLike, optional
+    values :  ArrayLike
       values or labels of the coordinate
+    dim_ref: str, optional
     attrs :  dict[str, Any], optional
       attributes providing meta-data of the array
 
     """
 
-    name: str | None = None
-    values: ArrayLike | None = None
+    name: str
+    values: ArrayLike
+    dim_ref: str | None = None
     attrs: dict = field(default_factory=dict)
 
-    def __bool__(self: _Coord) -> bool:
-        """Return False if object is empty."""
-        return self.name is not None
+    def __repr__(self: Coords) -> str:  # pragma: no cover
+        """Convert object to string representation."""
+        with np.printoptions(edgeitems=2, threshold=4, floatmode="maxprec"):
+            msg = (
+                f"  {'*' if self.name == self.dim_ref else ' '} {self.name}"
+                f" ({'' if self.dim_ref is None else self.dim_ref})"
+                f" {self.values.dtype} {self.values}"
+            )
+        return msg
 
     def __eq__(self: _Coord, other: _Coord) -> bool:
         """Return True if both objects are equal."""
         return (
             self.name == other.name
-            and (self.attrs == other.attrs)
             and np.array_equal(self.values, other.values)
+            and (self.attrs == other.attrs)
         )
 
     def __len__(self: _Coord) -> int:
         """Return length of coordinate."""
-        return len(self.values) if self else 0
+        return len(self.values)
 
     def __getitem__(self: _Coord, key: int | slice | NDArray[bool]) -> _Coord:
         """Return selected elements."""
@@ -93,6 +101,11 @@ class _Coord:
         return _Coord(
             name=self.name, values=self.values.copy(), attrs=self.attrs.copy()
         )
+
+    @property
+    def is_dimension(self: _Coord) -> bool:
+        """Check if dimension coordinate."""
+        return self.name == self.dim_ref
 
 
 # - class Coords -----------------------------------
@@ -127,14 +140,13 @@ class Coords:
 
     def __repr__(self: Coords) -> str:  # pragma: no cover
         """Convert object to string representation."""
-        msg = f"<pyxarr.Coords ({', '.join([x.name for x in self])})>"
-        with np.printoptions(threshold=5, floatmode="maxprec"):
-            for coord in self.coords:
-                msg += f"\n   {coord.name:8s} {coord.values.dtype} {coord.values}"
-                if coord.attrs:
-                    msg += "\nAttributes:"
-                    for key, val in coord.attrs.items():
-                        msg += f"\n    {key}:\t{val}"
+        msg = "Coordinates:"
+        for coord in self.coords:
+            msg += f"\n{coord.__repr__()}"
+            if coord.attrs:
+                msg += "\nAttributes:"
+                for key, val in coord.attrs.items():
+                    msg += f"\n    {key}:\t{val}"
         return msg
 
     def __bool__(self: Coords) -> bool:
@@ -177,6 +189,15 @@ class Coords:
 
         return None
 
+    def __setitem__(
+        self: Coords, name: str, value: ArrayLike | tuple[str, ArrayLike]
+    ) -> None:
+        """Select coordinate given its dimension name."""
+        if name in self:
+            raise KeyError("Can not modify existing dimension")
+
+        self += (name, value)
+
     def __iter__(self: Coords) -> Coords:
         """Return an iterator object."""
         return iter(self.coords)
@@ -187,6 +208,7 @@ class Coords:
 
     def __add__(self: Coords, coord: _Coord | tuple[str, ArrayLike]) -> Coords:
         """Add a coordinate to object."""
+        # print(f"function __add__: {coord}")
         if isinstance(coord, _Coord):
             if coord.name in self:
                 raise ValueError("do not try to overwrite a coordinate")
@@ -195,5 +217,22 @@ class Coords:
             name, val = coord
             if name in self:
                 raise ValueError("do not try to overwrite a coordinate")
-            self.coords += (_Coord(name, np.asarray(val)),)
+            if (
+                len(val) == 2
+                and isinstance(val[0], str)
+                and not isinstance(val[1], str)
+            ):
+                self.coords += (_Coord(name, np.asarray(val[1]), val[0]),)
+            else:
+                self.coords += (_Coord(name, np.asarray(val), name),)
         return self
+
+    @property
+    def ndim(self: Coords) -> int:
+        """Return number of dimension coordinates, ignoring auxiliary coordinates."""
+        num = 0
+        for coord in self.coords:
+            if coord.is_dimension:
+                num += 1
+
+        return num

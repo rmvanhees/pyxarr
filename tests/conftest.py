@@ -151,13 +151,28 @@ def da_from_tuple(attrs_for_da: dict) -> DataArray:
     """Create DataArray, coords initialized with tuple[list[str, ArrayLike]]."""
     return DataArray(
         np.arange(24 * 5 * 11, dtype=float).reshape(24, 5, 11),
-        coords=(
+        coords=[
             ("time", np.arange("2025-02-02", "2025-02-26", dtype="datetime64[D]")),
             ("row", np.arange(5)),
             ("column", np.arange(11)),
-        ),
+        ],
         attrs=attrs_for_da,
         name="from_tuple",
+    )
+
+
+@pytest.fixture
+def da_from_tuple_dims(attrs_for_da: dict) -> DataArray:
+    """Create DataArray, coords initialized with tuple[list[str, ArrayLike]]."""
+    return DataArray(
+        np.arange(24 * 5 * 11, dtype=float).reshape(24, 5, 11),
+        coords=[
+            ("time", np.arange(24)),
+            ("row", np.arange(5)),
+            ("column", np.arange(11)),
+        ],
+        attrs=attrs_for_da,
+        name="from_tuple_dims",
     )
 
 
@@ -166,11 +181,6 @@ def da_from_dims(attrs_for_da: dict) -> DataArray:
     """Create DataArray, coords initialized with coords."""
     return DataArray(
         np.arange(24 * 5 * 11, dtype=float).reshape(24, 5, 11),
-        coords=(
-            np.arange("2025-02-02", "2025-02-26", dtype="datetime64[D]"),
-            np.arange(5),
-            np.arange(11),
-        ),
         dims=("time", "row", "column"),
         attrs=attrs_for_da,
         name="from_dims",

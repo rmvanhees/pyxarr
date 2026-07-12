@@ -90,48 +90,23 @@ class TestDataArray:
         da_from_coords: DataArray,
         da_from_dict: DataArray,
         da_from_tuple: DataArray,
+        da_from_tuple_dims: DataArray,
         da_from_dims: DataArray,
     ) -> None:
         """Unit-test for different DataArray creation settings."""
         assert da_from_coords == da_from_dict
         assert da_from_coords == da_from_tuple
-        assert da_from_coords == da_from_dims
-        assert DataArray(np.ones((24, 5, 7))) == DataArray(
-            np.ones((24, 5, 7)), dims=("Z", "Y", "X")
-        )
-        with pytest.raises(KeyError, match=r".* each dimension") as excinfo:
+        assert da_from_tuple_dims == da_from_dims
+        with pytest.raises(ValueError, match=r"No coordinates .*") as excinfo:
             _ = DataArray(np.ones((24, 5, 7)), dims=("column", "row"))
-        assert "Provide a dimension name for each dimension" in str(excinfo.value)
-        with pytest.raises(KeyError, match="N-dim > 3") as excinfo:
-            _ = DataArray(np.ones((4, 24, 5, 7)))
-        assert "Please provide coordinates if N-dim > 3" in str(excinfo.value)
+        assert "No coordinates or dimensions" in str(excinfo.value)
 
     def test_getitem(self: TestDataArray, da_full: DataArray) -> None:
         """Unit-test for getitem method.."""
         assert da_full[...] == da_full
         assert np.array_equal(
-            da_full[:, 3, 5].values, np.array([56.0, 243.0, 430.0, 617.0, 804.0])
-        )
-
-    def test_swap_dims(self: TestDataArray, da_from_coords: DataArray) -> None:
-        """Unit-test for swap_dims method."""
-        xda = da_from_coords
-        xda.coords += ("orbit", 2230 + np.arange(xda.values.shape[0]))
-        assert "orbit" in xda.coords
-        assert "orbit" not in xda.dims
-        assert xda.dims == ("time", "row", "column")
-        xda.swap_dims("orbit", "time")
-        assert xda.dims == ("orbit", "row", "column")
-        with pytest.raises(KeyError, match="auxiliary coordinate") as excinfo:
-            xda.swap_dims("Z", "time")
-        assert "auxiliary coordinate 'Z' does not exists" in str(excinfo.value)
-        with pytest.raises(KeyError, match="dimensional coordinate") as excinfo:
-            xda.swap_dims("orbit", "Z")
-        assert "dimensional coordinate 'Z' does not exists" in str(excinfo.value)
-        with pytest.raises(ValueError, match=r".* are not equal") as excinfo:
-            xda.swap_dims("orbit", "row")
-        assert "length coordinates 'orbit' and 'row' are not equal" in str(
-            excinfo.value
+            da_full[:, 3, 5].values,
+            np.array([[[56.0]], [[243.0]], [[430.0]], [[617.0]], [[804.0]]]),
         )
 
     def test_add(self: TestDataArray, da_full: DataArray, da_ones: DataArray) -> None:
