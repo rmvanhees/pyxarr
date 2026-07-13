@@ -123,7 +123,7 @@ class TestDataArray:
             da_full[:, 3, 5].values,
             np.array([[[56.0]], [[243.0]], [[430.0]], [[617.0]], [[804.0]]]),
         )
-        da_full.coords["T"] = ["orbit", list(range(5, 10))]
+        da_full.add_coord("T", ["orbit", list(range(5, 10))])
         _ = da_full[:, 3, 5]
 
     def test_sel(self: TestDataArray, da_full: DataArray) -> None:
@@ -137,9 +137,9 @@ class TestDataArray:
             np.array([[[56.0]], [[243.0]], [[430.0]], [[617.0]], [[804.0]]]),
         )
         # add auxilary coordinate
-        da_full.coords["T"] = ("Y", list(range(10, 21)))
-        assert da_full.sel(Y=mask_y, X=mask_x).coords["Y"].values == np.array([3])
-        assert da_full.sel(Y=mask_y, X=mask_x).coords["T"].values == np.array([13])
+        da_full.add_coord("T", ["Y", list(range(10, 21))])
+        assert da_full.sel(Y=mask_y, X=mask_x).get_coord("Y").values == np.array([3])
+        assert da_full.sel(Y=mask_y, X=mask_x).get_coord("T").values == np.array([13])
 
     def test_add(self: TestDataArray, da_full: DataArray, da_ones: DataArray) -> None:
         """Unit-test for add method."""

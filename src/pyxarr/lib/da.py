@@ -32,12 +32,12 @@ import netCDF4
 import numpy as np
 from h5yaml.template_nc import TemplateNc
 
-from .coords import Coords
+from .coords import Coords, _Coord
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from numpy.typing import NDArray
+    from numpy.typing import ArrayLike, NDArray
 
 
 # - global parameters -------------------------
@@ -66,10 +66,11 @@ class DataArray:
 
     values: NDArray | None = None
     _: KW_ONLY
-    coords: Coords = field(default_factory=Coords)
+    coords: tuple | list | dict = field(default_factory=Coords)
     dims: tuple[str, ...] = field(default_factory=tuple)
     attrs: dict = field(default_factory=dict)
     name: str | None = None
+    _coords: Coords = field(default_factory=Coords, init=False)
 
     def __post_init__(self: DataArray) -> None:
         """Check and or convert class attributes of DataArray.
@@ -92,10 +93,12 @@ class DataArray:
 
         # define coordinates
         if self.coords:
-            if not isinstance(self.coords, Coords):
+            if isinstance(self.coords, Coords):
+                self._coords = self.coords
+            else:
                 if self.dims:
                     try:
-                        self.coords = Coords(
+                        self._coords = Coords(
                             list(zip(self.dims, self.coords, strict=True))
                         )
                     except ValueError as exc:
@@ -103,13 +106,13 @@ class DataArray:
                             "coords and dims must be of equal length"
                         ) from exc
                 else:
-                    self.coords = Coords(self.coords)
-            if self.coords.ndim != self.values.ndim:
+                    self._coords = Coords(self.coords)
+            if self._coords.ndim != self.values.ndim:
                 raise ValueError("No coordinates or dimensions for each data dimension")
-            self.dims = tuple(x.name for x in self.coords)
+            self.dims = tuple(x.name for x in self._coords)
         elif self.dims and len(self.dims) == self.values.ndim:
             _val = [list(range(x)) for x in self.values.shape]
-            self.coords = Coords(list(zip(self.dims, _val, strict=True)))
+            self._coords = Coords(list(zip(self.dims, _val, strict=True)))
         else:
             raise ValueError("No coordinates or dimensions for each data dimension")
 
@@ -123,8 +126,8 @@ class DataArray:
         name_str = "\b" if self.name is None else f"{self.name!r}"
         msg = f"<pyxarr.DataArray {name_str} ({', '.join(list_dims)})>"
         msg += f"\n{self.values!r})"
-        if self.coords:
-            msg += f"\n{self.coords.__repr__()}"
+        if self._coords:
+            msg += f"\n{self._coords.__repr__()}"
         if self.attrs:
             msg += "\nAttributes:"
             for key, val in self.attrs.items():
@@ -147,7 +150,7 @@ class DataArray:
         """Return True if both objects are equal."""
         return (
             self.attrs == other.attrs
-            and self.coords == other.coords
+            and self._coords == other._coords
             and self.dims == other.dims
             and np.array_equal(self.values, other.values)
         )
@@ -168,7 +171,9 @@ class DataArray:
 
         new_sel = ()
         for name, isel in zip(
-            self.dims, (data_sel,) if self.values.ndim == 1 else data_sel, strict=True
+            self.dims[: self._coords.ndim],
+            (data_sel,) if self.values.ndim == 1 else data_sel,
+            strict=True,
         ):
             # We need to rebuild new_sel from data_sel,
             # because data_sel may contain an integer which breaks its coordinate.
@@ -177,10 +182,10 @@ class DataArray:
                 isel = np.s_[isel : isel + 1]
             new_sel += (isel,)
 
-            new_coords.append((name, (name, self.coords[name].values[isel])))
-            for co in self.coords:
+            new_coords.append((name, (name, self._coords[name].values[isel])))
+            for co in self._coords:
                 if co.name not in self.dims and co.dim_ref == name:
-                    co_vals = self.coords[co.name].values
+                    co_vals = self._coords[co.name].values
                     new_coords.append(
                         (
                             co.name,
@@ -195,56 +200,11 @@ class DataArray:
             attrs=self.attrs,
         )
 
-    def sel(self: DataArray, **kwargs: dict[str, NDArray[bool]]) -> DataArray:
-        """Select data along one axis using a boolean array.
-
-        Limitations
-        -----------
-        Works currently only on dimension coordinates.
-
-        """
-        # temporary fix in case we have added coordinates in the meantime
-        self.dims = tuple(x.name for x in self.coords)
-
-        values = self.values.copy()
-        new_coords = []
-        for ix, name in enumerate(self.dims):
-            if not self.coords[name].is_dimension:
-                for co in new_coords:
-                    if self.coords[name].dim_ref == co[0]:
-                        new_coords.append(
-                            (name, (co[0], self.coords[name].values[kwargs[co[0]]]))
-                        )
-                        break
-                continue
-
-            if name in kwargs:
-                if not (
-                    isinstance(kwargs[name], np.ndarray)
-                    and kwargs[name].dtype == np.bool
-                ):
-                    raise ValueError(f"array '{name}' should be boolean numpy array")
-                mask = kwargs[name]
-                values = np.take(values, mask.nonzero()[0], axis=ix)
-                co_vals = self.coords[name].values
-                new_coords.append(
-                    (name, (name, None if co_vals is None else co_vals[mask]))
-                )
-            else:
-                new_coords.append((name, (name, self.coords[name].values)))
-
-        return DataArray(
-            values,
-            coords=new_coords,
-            name=self.name,
-            attrs=self.attrs,
-        )
-
     def __add__(self: DataArray, other: DataArray | NDArray) -> DataArray:
         """Return new DataArray with values of other added to current."""
         return DataArray(
             self.values + (other if isinstance(other, np.ndarray) else other.values),
-            coords=self.coords,
+            coords=self._coords,
             name=self.name,
             attrs=self.attrs.copy(),
         )
@@ -253,7 +213,7 @@ class DataArray:
         """Return new DataArray with values of other subtracted from current."""
         return DataArray(
             self.values - (other if isinstance(other, np.ndarray) else other.values),
-            coords=self.coords,
+            coords=self._coords,
             name=self.name,
             attrs=self.attrs.copy(),
         )
@@ -262,7 +222,7 @@ class DataArray:
         """Return new DataArray with values of current multiplied by other."""
         return DataArray(
             self.values * (other if isinstance(other, np.ndarray) else other.values),
-            coords=self.coords,
+            coords=self._coords,
             name=self.name,
             attrs=self.attrs.copy(),
         )
@@ -271,7 +231,7 @@ class DataArray:
         """Return new DataArray with values of current divided by other."""
         return DataArray(
             self.values / (other if isinstance(other, np.ndarray) else other.values),
-            coords=self.coords,
+            coords=self._coords,
             name=self.name,
             attrs=self.attrs.copy(),
         )
@@ -301,9 +261,6 @@ class DataArray:
            Store data in a netCDF4 group
 
         """
-        # temporary fix in case we have added coordinates in the meantime
-        self.dims = tuple(x.name for x in self.coords)
-
         res = {}
         if not bool(self):
             return res
@@ -317,7 +274,7 @@ class DataArray:
                 "_dtype": coord.values.dtype.str,
                 "_size": coord.values.size,
             }
-            for coord in self.coords
+            for coord in self._coords
         }
 
         # check if the data-type is compound
@@ -355,40 +312,62 @@ class DataArray:
 
         return res
 
-    def to_netcdf(
-        self: DataArray,
-        path: None | str | Path = None,
-        mode: str = "w",
-        group: None | str = None,
-        attrs_group: None | dict = None,
-    ) -> None:
-        """Write DataArray contents to netCDF4 file.
+    def add_coord(self: DataArray, co_name: str, co_val: list[str, ArrayLike]) -> None:
+        """Add an auxiliary coordinate."""
+        self._coords[co_name] = co_val
+        self.dims += (co_name,)
 
-        Parameters
-        ----------
-        path :  Path, default=None
-           Path to store the DataArray as variable and its dimensions
-        mode :  {"w", "a"}, default="w"
-           Currently appand mode is not supported
-        group : str, default=None
-           Store data in a netCDF4 group
-        attrs_group :  dict, default=None
-           Provide attributes of the netCDF4 group, each attribute must be defined
-           relative to root e.g. f'/{group}/{attr}'
+    def get_coord(self: DataArray, co_name: str) -> _Coord:
+        """Return coordinate."""
+        return self._coords[co_name]
+
+    def sel(self: DataArray, **kwargs: dict[str, NDArray[bool]]) -> DataArray:
+        """Select data along one axis using a boolean array.
+
+        Limitations
+        -----------
+        Works currently only on dimension coordinates.
 
         """
-        if mode != "w":
-            raise NotImplementedError("Append mode not implemented")
+        values = self.values.copy()
+        new_coords = []
+        for ix, name in enumerate(self.dims):
+            if not self._coords[name].is_dimension:
+                co_val = ()
+                for co in new_coords:
+                    if self._coords[name].dim_ref == co[0]:
+                        co_val = (
+                            co[0],
+                            self._coords[name].values[kwargs[co[0]]],
+                        )
+                        break
 
-        da_dict = self.asdict(group)
-        if group is not None and attrs_group is not None:
-            da_dict[str(PosixPath(group) / "attrs_groups")] = attrs_group
+                if co_val:
+                    new_coords.append((name, co_val))
+                continue
 
-        TemplateNc(nc_dict=da_dict).create(path)
-        # pylint: disable=no-member
-        with netCDF4.Dataset(path, "r+") as fid:
-            var_name = self.name if group is None else str(PosixPath(group) / self.name)
-            fid[var_name][:] = self.values
+            if name in kwargs:
+                if not (
+                    isinstance(kwargs[name], np.ndarray)
+                    and kwargs[name].dtype == np.bool
+                ):
+                    raise ValueError(f"array '{name}' should be boolean numpy array")
+
+                mask = kwargs[name]
+                values = np.take(values, mask.nonzero()[0], axis=ix)
+                co_vals = self._coords[name].values
+                new_coords.append(
+                    (name, (name, None if co_vals is None else co_vals[mask]))
+                )
+            else:
+                new_coords.append((name, (name, self._coords[name].values)))
+
+        return DataArray(
+            values,
+            coords=new_coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
 
     def mean(
         self: DataArray,
@@ -423,7 +402,7 @@ class DataArray:
             np.nanmean(self.values, axis=indx)
             if skipna
             else self.values.mean(axis=indx),
-            coords=tuple(x for x in self.coords if x.name != dim),
+            coords=tuple(x for x in self._coords if x.name != dim),
             attrs=self.attrs.copy(),
             name=self.name,
         )
@@ -461,7 +440,7 @@ class DataArray:
             np.nanmedian(self.values, axis=indx)
             if skipna
             else np.median(self.values, axis=indx),
-            coords=tuple(x for x in self.coords if x.name != dim),
+            coords=tuple(x for x in self._coords if x.name != dim),
             attrs=self.attrs.copy(),
             name=self.name,
         )
@@ -504,7 +483,42 @@ class DataArray:
             np.nanstd(self.values, ddof=ddof, axis=indx)
             if skipna
             else self.values.std(ddof=ddof, axis=indx),
-            coords=tuple(x for x in self.coords if x.name != dim),
+            coords=tuple(x for x in self._coords if x.name != dim),
             attrs=self.attrs.copy(),
             name=self.name,
         )
+
+    def to_netcdf(
+        self: DataArray,
+        path: None | str | Path = None,
+        mode: str = "w",
+        group: None | str = None,
+        attrs_group: None | dict = None,
+    ) -> None:
+        """Write DataArray contents to netCDF4 file.
+
+        Parameters
+        ----------
+        path :  Path, default=None
+           Path to store the DataArray as variable and its dimensions
+        mode :  {"w", "a"}, default="w"
+           Currently appand mode is not supported
+        group : str, default=None
+           Store data in a netCDF4 group
+        attrs_group :  dict, default=None
+           Provide attributes of the netCDF4 group, each attribute must be defined
+           relative to root e.g. f'/{group}/{attr}'
+
+        """
+        if mode != "w":
+            raise NotImplementedError("Append mode not implemented")
+
+        da_dict = self.asdict(group)
+        if group is not None and attrs_group is not None:
+            da_dict[str(PosixPath(group) / "attrs_groups")] = attrs_group
+
+        TemplateNc(nc_dict=da_dict).create(path)
+        # pylint: disable=no-member
+        with netCDF4.Dataset(path, "r+") as fid:
+            var_name = self.name if group is None else str(PosixPath(group) / self.name)
+            fid[var_name][:] = self.values
