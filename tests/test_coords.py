@@ -56,6 +56,11 @@ class TestCoord:
         assert co_struct.values[-1] == 15
         assert co_struct == co_struct.copy()
 
+    def test_is_dim(self: TestCoord) -> None:
+        """Unit-test for method _Coord.is_dimension()."""
+        assert _Coord("time", list(range(17)), "time").is_dimension
+        assert not _Coord("orbit", list(range(17)), "time").is_dimension
+
 
 class TestCoords:
     """Class to test Coords from pyxarr.lib.coords."""
@@ -101,27 +106,67 @@ class TestCoords:
         )
         assert co_from_dict != Coords(co_tuple)
 
+    def test_len(self: TestCoords) -> None:
+        """Unit-test for len method."""
+        coords = Coords(
+            [
+                ("time", list(range(7))),
+                ("Y", list(range(3))),
+                ("X", list(range(5))),
+            ]
+        )
+        assert len(Coords()) == 0
+        assert len(coords) == 3
+
+    def test_add(self: TestCoords, co_from_dict: Coords) -> None:
+        """Unit-test for method Coords.__add__()."""
+        empty_co = Coords()
+        empty_co += ("row", np.arange(5))
+        assert "row" in empty_co
+        assert len(empty_co["row"]) == 5
+        empty_co += co_from_dict["column"]
+
+        with pytest.raises(KeyError, match=r"can't modify .*") as excinfo:
+            empty_co += ("row", np.arange(5))
+        assert "can't modify existing coordinate" in str(excinfo.value)
+        with pytest.raises(KeyError, match=r"can't modify .*") as excinfo:
+            empty_co += co_from_dict["row"]
+        assert "can't modify existing coordinate" in str(excinfo.value)
+
     def test_getitem(self: TestCoords, co_from_dict: Coords) -> None:
         """Unit-test for getitem method."""
         assert Coords()["x"] is None
         assert co_from_dict["x"] is None
         assert np.array_equal(co_from_dict["column"].values, np.arange(11))
 
-    def test_len(self: TestCoords, co_from_dict: Coords) -> None:
-        """Unit-test for len method."""
-        assert len(Coords()) == 0
-        assert len(co_from_dict) == 3
+    def test_setitem(self: TestCoords) -> None:
+        """Unit-test for method Coords.setitem()."""
+        coords = Coords(
+            [
+                ("time", list(range(7))),
+                ("Y", list(range(3))),
+                ("X", list(range(5))),
+            ]
+        )
+        assert "time" in coords
+        assert "Y" in coords
+        assert "X" in coords
+        assert "orbit" not in coords
+        coords["orbit"] = ["time", list(range(2222, 2229))]
+        assert "orbit" in coords
+        with pytest.raises(KeyError, match=r"can't modify .*") as excinfo:
+            coords["orbit"] = ["time", list(range(2222, 2229))]
+        assert "can't modify existing coordinate" in str(excinfo.value)
 
-    def test_add(self: TestCoords, co_from_dict: Coords) -> None:
-        """Unit-test for add method."""
-        empty_co = Coords()
-        empty_co += ("row", np.arange(5))
-        assert "row" in empty_co
-        assert len(empty_co["row"]) == 5
-        empty_co += co_from_dict["column"]
-        with pytest.raises(ValueError, match="overwrite") as excinfo:
-            empty_co += ("row", np.arange(5))
-        assert "do not try to overwrite a coordinate" in str(excinfo.value)
-        with pytest.raises(ValueError, match="overwrite") as excinfo:
-            empty_co += co_from_dict["row"]
-        assert "do not try to overwrite a coordinate" in str(excinfo.value)
+    def test_ndim(self: TestCoords, co_from_dict: Coords) -> None:
+        """Unit-test for method Coords.__ndim__()."""
+        coords = Coords(
+            [
+                ("time", list(range(7))),
+                ("Y", list(range(3))),
+                ("X", list(range(5))),
+            ]
+        )
+        assert coords.ndim == 3
+        coords["orbit"] = ["time", list(range(2222, 2229))]
+        assert coords.ndim == 3

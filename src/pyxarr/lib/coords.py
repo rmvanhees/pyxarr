@@ -87,14 +87,14 @@ class _Coord:
                 name=self.name,
                 values=np.asarray(self.values)[key],
                 dim_ref=self.dim_ref,
-                attrs=self.attrs
+                attrs=self.attrs,
             )
         if isinstance(key, int):
             return _Coord(
                 name=self.name,
                 values=np.asarray([self.values[key]]),
                 dim_ref=self.dim_ref,
-                attrs=self.attrs
+                attrs=self.attrs,
             )
         return _Coord(
             name=self.name,
@@ -113,7 +113,7 @@ class _Coord:
             name=self.name,
             values=self.values.copy(),
             dim_ref=self.dim_ref,
-            attrs=self.attrs.copy()
+            attrs=self.attrs.copy(),
         )
 
     @property
@@ -195,6 +195,37 @@ class Coords:
 
         return True
 
+    def __iter__(self: Coords) -> Coords:
+        """Return an iterator object."""
+        return iter(self.coords)
+
+    def __len__(self: Coords) -> int:
+        """Return number of coordinates."""
+        return len(self.coords)
+
+    def __add__(
+        self: Coords,
+        coord: _Coord | tuple[str, ArrayLike | list[str, ArrayLike]],
+    ) -> Coords:
+        """Add a coordinate to object."""
+        # print(f"function __add__: {coord}")
+        if isinstance(coord, _Coord):
+            if coord.name in self:
+                raise KeyError("can't modify existing coordinate")
+            self.coords += (coord,)
+            return self
+
+        name, val = coord
+        if name in self:
+            raise KeyError("can't modify existing coordinate")
+
+        if len(val) == 2 and isinstance(val[0], str) and not isinstance(val[1], str):
+            self.coords += (_Coord(name, np.asarray(val[1]), val[0]),)
+        else:
+            self.coords += (_Coord(name, np.asarray(val), name),)
+
+        return self
+
     def __getitem__(self: Coords, name: str) -> _Coord | None:
         """Select coordinate given its dimension name."""
         for coord in self.coords:
@@ -204,42 +235,16 @@ class Coords:
         return None
 
     def __setitem__(
-        self: Coords, name: str, value: ArrayLike | tuple[str, ArrayLike]
+        self: Coords,
+        name: str,
+        value: ArrayLike[np.generic] | list[str, ArrayLike[np.generic]],
     ) -> None:
-        """Select coordinate given its dimension name."""
+        """Add a dimension or auxiliary coordinate."""
         if name in self:
-            raise KeyError("Can not modify existing dimension")
+            raise KeyError("can't modify existing coordinate")
 
+        # use method Coords._add__()
         self += (name, value)
-
-    def __iter__(self: Coords) -> Coords:
-        """Return an iterator object."""
-        return iter(self.coords)
-
-    def __len__(self: Coords) -> int:
-        """Return number of coordinates."""
-        return len(self.coords)
-
-    def __add__(self: Coords, coord: _Coord | tuple[str, ArrayLike]) -> Coords:
-        """Add a coordinate to object."""
-        # print(f"function __add__: {coord}")
-        if isinstance(coord, _Coord):
-            if coord.name in self:
-                raise ValueError("do not try to overwrite a coordinate")
-            self.coords += (coord,)
-        else:
-            name, val = coord
-            if name in self:
-                raise ValueError("do not try to overwrite a coordinate")
-            if (
-                len(val) == 2
-                and isinstance(val[0], str)
-                and not isinstance(val[1], str)
-            ):
-                self.coords += (_Coord(name, np.asarray(val[1]), val[0]),)
-            else:
-                self.coords += (_Coord(name, np.asarray(val), name),)
-        return self
 
     @property
     def ndim(self: Coords) -> int:

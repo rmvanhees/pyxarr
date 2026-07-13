@@ -93,7 +93,17 @@ class DataArray:
         # define coordinates
         if self.coords:
             if not isinstance(self.coords, Coords):
-                self.coords = Coords(self.coords)
+                if self.dims:
+                    try:
+                        self.coords = Coords(
+                            list(zip(self.dims, self.coords, strict=True))
+                        )
+                    except ValueError as exc:
+                        raise ValueError(
+                            "coords and dims must be of equal length"
+                        ) from exc
+                else:
+                    self.coords = Coords(self.coords)
             if self.coords.ndim != self.values.ndim:
                 raise ValueError("No coordinates or dimensions for each data dimension")
             self.dims = tuple(x.name for x in self.coords)
@@ -124,6 +134,14 @@ class DataArray:
     def __bool__(self: DataArray) -> bool:
         """Return False if DataArray is empty."""
         return self.values is not None
+
+    def __len__(self: DataArray) -> int:
+        """Return length of first dimension."""
+        # consistent with numpy and xarray!
+        try:
+            return len(self.values)
+        except TypeError:
+            return 0
 
     def __eq__(self: DataArray, other: DataArray) -> bool:
         """Return True if both objects are equal."""
@@ -177,14 +195,6 @@ class DataArray:
             attrs=self.attrs,
         )
 
-    def __len__(self: DataArray) -> int:
-        """Return length of first dimension."""
-        # consistent with numpy and xarray!
-        try:
-            return len(self.values)
-        except TypeError:
-            return 0
-
     def sel(self: DataArray, **kwargs: dict[str, NDArray[bool]]) -> DataArray:
         """Select data along one axis using a boolean array.
 
@@ -193,34 +203,38 @@ class DataArray:
         Works currently only on dimension coordinates.
 
         """
-        data_sel = ()
+        # temporary fix in case we have added coordinates in the meantime
+        self.dims = tuple(x.name for x in self.coords)
+
+        values = self.values.copy()
         new_coords = []
-        for name in self.dims:
+        for ix, name in enumerate(self.dims):
+            if not self.coords[name].is_dimension:
+                for co in new_coords:
+                    if self.coords[name].dim_ref == co[0]:
+                        new_coords.append(
+                            (name, (co[0], self.coords[name].values[kwargs[co[0]]]))
+                        )
+                        break
+                continue
+
             if name in kwargs:
-                # ToDo: kwargs[name] should be a boolean ndarray
+                if not (
+                    isinstance(kwargs[name], np.ndarray)
+                    and kwargs[name].dtype == np.bool
+                ):
+                    raise ValueError(f"array '{name}' should be boolean numpy array")
                 mask = kwargs[name]
-                data_sel += (kwargs[name],)
+                values = np.take(values, mask.nonzero()[0], axis=ix)
                 co_vals = self.coords[name].values
                 new_coords.append(
                     (name, (name, None if co_vals is None else co_vals[mask]))
                 )
-            elif self.coords[name].is_dimension:
-                data_sel += (slice(None, None, None),)
+            else:
                 new_coords.append((name, (name, self.coords[name].values)))
-            elif self.coords[name].dim_ref in self.dims:
-                co_vals = self.coords[name].values
-                new_coords.append(
-                    (
-                        name,
-                        (
-                            self.coords[name].dim_ref,
-                            None if co_vals is None else co_vals[mask],
-                        ),
-                    )
-                )
 
         return DataArray(
-            self.values[data_sel],
+            values,
             coords=new_coords,
             name=self.name,
             attrs=self.attrs,
@@ -287,6 +301,9 @@ class DataArray:
            Store data in a netCDF4 group
 
         """
+        # temporary fix in case we have added coordinates in the meantime
+        self.dims = tuple(x.name for x in self.coords)
+
         res = {}
         if not bool(self):
             return res

@@ -90,24 +90,56 @@ class TestDataArray:
         da_from_coords: DataArray,
         da_from_dict: DataArray,
         da_from_tuple: DataArray,
-        da_from_tuple_dims: DataArray,
+        da_from_list_dims: DataArray,
         da_from_dims: DataArray,
     ) -> None:
         """Unit-test for different DataArray creation settings."""
         assert da_from_coords == da_from_dict
         assert da_from_coords == da_from_tuple
-        assert da_from_tuple_dims == da_from_dims
+        assert da_from_list_dims == da_from_dims
         with pytest.raises(ValueError, match=r"No coordinates .*") as excinfo:
             _ = DataArray(np.ones((24, 5, 7)), dims=("column", "row"))
         assert "No coordinates or dimensions" in str(excinfo.value)
+        with pytest.raises(ValueError, match=r".* equal length") as excinfo:
+            _ = DataArray(
+                np.ones((24, 5, 7)),
+                dims=("column", "row"),
+                coords=[np.arange(24), np.arange(5), list(range(11))],
+            )
+        assert "coords and dims must be of equal length" in str(excinfo.value)
+        with pytest.raises(ValueError, match=r"No coordinates .*") as excinfo:
+            _ = DataArray(
+                np.ones((24, 5, 7)),
+                dims=("column", "row"),
+                coords=[np.arange(24), np.arange(5)],
+            )
+        assert "No coordinates or dimensions" in str(excinfo.value)
 
     def test_getitem(self: TestDataArray, da_full: DataArray) -> None:
-        """Unit-test for getitem method.."""
+        """Unit-test for method DataArray.__getitem__()."""
         assert da_full[...] == da_full
+        assert da_full[:] == da_full
         assert np.array_equal(
             da_full[:, 3, 5].values,
             np.array([[[56.0]], [[243.0]], [[430.0]], [[617.0]], [[804.0]]]),
         )
+        da_full.coords["T"] = ["orbit", list(range(5, 10))]
+        _ = da_full[:, 3, 5]
+
+    def test_sel(self: TestDataArray, da_full: DataArray) -> None:
+        """Unit-test for method DataArray.sel()."""
+        mask_y = np.zeros(11, dtype=bool)
+        mask_y[3] = True
+        mask_x = np.zeros(17, dtype=bool)
+        mask_x[5] = True
+        assert np.array_equal(
+            da_full.sel(Y=mask_y, X=mask_x).values,
+            np.array([[[56.0]], [[243.0]], [[430.0]], [[617.0]], [[804.0]]]),
+        )
+        # add auxilary coordinate
+        da_full.coords["T"] = ("Y", list(range(10, 21)))
+        assert da_full.sel(Y=mask_y, X=mask_x).coords["Y"].values == np.array([3])
+        assert da_full.sel(Y=mask_y, X=mask_x).coords["T"].values == np.array([13])
 
     def test_add(self: TestDataArray, da_full: DataArray, da_ones: DataArray) -> None:
         """Unit-test for add method."""
