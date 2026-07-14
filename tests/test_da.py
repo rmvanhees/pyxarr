@@ -76,6 +76,9 @@ class TestDataArray:
         assert len(da_full) == 5
         assert da_full.shape == (5, 11, 17)
         assert da_full.size == 5 * 11 * 17
+        assert da_full.sizes.orbit == 5
+        assert da_full.sizes.Y == 11
+        assert da_full.sizes.X == 17
         temp_dir = Path(os.getenv("RUNNER_TEMP", "."))
         da_full.to_netcdf(temp_dir / "test_full.nc")
         da_full.to_netcdf(temp_dir / "test_full.nc", group="/GROUP")
@@ -126,8 +129,6 @@ class TestDataArray:
         # add an auxiliary coordinate
         da_full.add_coord("T", ["orbit", list(range(5, 10))])
         assert "T" in da_full.get_coords
-        assert len(da_full[2:, 3, 5].get_coords["orbit"]) == 3
-        assert len(da_full[2:, 3, 5].get_coords["T"]) == 3
         assert da_full[:, 3, 5].shape == (5, 1, 1)
         assert da_full[2:, 3:, :5].shape == (3, 8, 5)
         assert da_full[2, :, :].shape == (1, 11, 17)

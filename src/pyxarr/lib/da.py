@@ -24,7 +24,7 @@ from __future__ import annotations
 
 __all__ = ["DataArray"]
 
-from dataclasses import KW_ONLY, dataclass, field
+from dataclasses import KW_ONLY, dataclass, field, make_dataclass
 from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
@@ -251,6 +251,15 @@ class DataArray:
             return self.values.size
         except AttributeError:
             return None
+
+    @property
+    def sizes(self: DataArray) -> dataclass:
+        """Ordered mapping from dimension names to lengths."""
+        return make_dataclass(
+            "Sizes",
+            zip(self.dims, len(self.dims) * (np.uint32,), strict=True),
+            frozen=True,
+        )(*self.values.shape)
 
     def asdict(self: DataArray, group: None | str = None) -> dict:
         """Return DataArray as dictionary.

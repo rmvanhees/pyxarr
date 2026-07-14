@@ -158,7 +158,7 @@ class TestCoords:
             coords["orbit"] = ["time", list(range(2222, 2229))]
         assert "can't modify existing coordinate" in str(excinfo.value)
 
-    def test_ndim(self: TestCoords, co_from_dict: Coords) -> None:
+    def test_ndim(self: TestCoords) -> None:
         """Unit-test for method Coords.__ndim__()."""
         coords = Coords(
             [
