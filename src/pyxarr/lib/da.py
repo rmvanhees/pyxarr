@@ -32,7 +32,7 @@ import netCDF4
 import numpy as np
 from h5yaml.template_nc import TemplateNc
 
-from .coords import Coords, _Coord
+from .coords import Coords
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -184,7 +184,7 @@ class DataArray:
 
             new_coords.append((name, (name, self._coords[name].values[isel])))
             for co in self._coords:
-                if co.name not in self.dims and co.dim_ref == name:
+                if not co.is_dimension and co.dim_ref == name:
                     co_vals = self._coords[co.name].values
                     new_coords.append(
                         (
@@ -317,9 +317,10 @@ class DataArray:
         self._coords[co_name] = co_val
         self.dims += (co_name,)
 
-    def get_coord(self: DataArray, co_name: str) -> _Coord:
+    @property
+    def get_coords(self: DataArray) -> Coords:
         """Return coordinate."""
-        return self._coords[co_name]
+        return self._coords.copy()
 
     def sel(self: DataArray, **kwargs: dict[str, NDArray[bool]]) -> DataArray:
         """Select data along one axis using a boolean array.

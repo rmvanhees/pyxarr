@@ -68,7 +68,7 @@ class Dataset:
         self.coords = Coords()
         self.dims = ()
         for da in self.data_vars.values():
-            for coord in da.coords:
+            for coord in da.get_coords:
                 if coord not in self.coords:
                     self.coords += coord
                     self.dims += (coord.name,)
@@ -145,10 +145,10 @@ class Dataset:
         if not isinstance(xda, DataArray):
             raise ValueError("you can only add DataArrays to a Dataset")
 
-        for key in xda.dims:
-            if key not in self.coords:
-                self.coords += xda.get_coord[key]
-                self.dims += (key,)
+        for coord in xda.get_coords:
+            if coord not in self.coords:
+                self.coords += coord
+                self.dims += (coord.name,)
 
         self.data_vars[name] = xda
 

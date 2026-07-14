@@ -205,7 +205,7 @@ class Coords:
 
     def __add__(
         self: Coords,
-        coord: _Coord | tuple[str, ArrayLike | list[str, ArrayLike]],
+        coord: _Coord | tuple[str, ArrayLike] | list[str, ArrayLike],
     ) -> Coords:
         """Add a coordinate to object."""
         # print(f"function __add__: {coord}")
@@ -245,6 +245,10 @@ class Coords:
 
         # use method Coords._add__()
         self += (name, value)
+
+    def copy(self: Coords) -> Coords:
+        """Return copy of class instance."""
+        return Coords(tuple(x for x in self))
 
     @property
     def ndim(self: Coords) -> int:
