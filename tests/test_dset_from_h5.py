@@ -32,7 +32,7 @@ from pyxarr.dset_from_h5 import dset_from_h5
 
 
 class TestFromH5:
-    """Class to test pyxarr.dset_from_h5."""
+    """Class with unit-tests for pyxarr.dset_from_h5."""
 
     _res = TemplateH5(
         [
