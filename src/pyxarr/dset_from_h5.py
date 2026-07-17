@@ -94,6 +94,40 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict[str, Any]:
     return attrs
 
 
+def convert_timestamps(
+    co_data: NDArray[float], co_attrs: str, co_units: str
+) -> NDArray[np.datetime64]:
+    """Convert timestamps to numpy.datetime64."""
+    if (
+        co_units is not None
+        and "units" in co_attrs
+        and co_attrs["units"].startswith(("days since", "seconds since"))
+    ):
+        # obtain reference date from attribute 'units'
+        ref_time = np.datetime64(
+            co_attrs["units"][11:]
+            if co_attrs["units"][10] == " "
+            else co_attrs["units"][14:]
+        )
+        match co_units:
+            case "ns":
+                co_data *= 1e9
+            case "us":
+                co_data *= 1e6
+            case "ms":
+                co_data *= 1e3
+            case "s":
+                pass
+            case "D" if co_attrs["units"].startswith("days since"):
+                pass
+            case _:
+                raise KeyError(f"unknown np.timedelta64 unit: '{co_units}'")
+
+        return ref_time + np.rint(co_data).astype(f"timedelta64[{co_units}]")
+
+    return co_data
+
+
 def __get_coords(
     dset: h5py.Dataset,
     data_sel: tuple[slice | int] | None = None,
@@ -134,10 +168,14 @@ def __get_coords(
             if name.startswith("row") or name.startswith("column"):
                 name = name.split(" ")[0]
             # print(name, dim_dset.shape, dim_dset.dtype)
-            if time_units is not None:
-                raise NotImplementedError("time_units not yet implemented")
+
+            # check dimension attributes
             attrs = __get_attrs(dim_dset, None)
-            coords += _Coord(name, dim_dset[data_sel[ii]], dim_ref=name, attrs=attrs)
+            # convert timestamps to np.datetime64
+            dim_data = convert_timestamps(dim_dset[data_sel[ii]], attrs, time_units)
+
+            # add _Coord
+            coords += _Coord(name, dim_data, dim_ref=name, attrs=attrs)
 
     if coords:
         return coords
@@ -294,10 +332,10 @@ def dset_from_h5(
     # get coordinates of the dataset
     try:
         coords = __get_coords(h5_dset, data_sel, dim_names, time_units)
-    except (KeyError, ValueError) as exc:
+    except ValueError as exc:
         raise RuntimeError("Failed to read dataset dimensions") from exc
-    except NotImplementedError as exc:
-        print(exc)
+    except KeyError as exc:
+        raise RuntimeError("Failed to convert timestamps") from exc
     # print(f"1: coords: {coords}")
 
     # get values for the dataset

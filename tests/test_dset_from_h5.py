@@ -59,9 +59,9 @@ class TestFromH5:
             ):
                 _ = dset_from_h5(self.FID_H5[key], field="index")
 
-        with pytest.raises(KeyError, match=r"unknown .*") as excinfo:
+        with pytest.raises(RuntimeError, match=r".* convert timestamps") as excinfo:
             _ = dset_from_h5(self.FID_H5["/group_01/stats"], time_units="ps")
-        assert "unknown numpy.timedelta64 unit" in str(excinfo.value)
+        assert "Failed to convert timestamps" in str(excinfo.value)
 
     def test_close(self: TestFromH5) -> None:
         """Close the in-memory HDF5 file."""
