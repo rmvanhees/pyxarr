@@ -24,7 +24,9 @@ from __future__ import annotations
 
 __all__ = ["Dataset"]
 
+import operator
 from dataclasses import KW_ONLY, dataclass, field
+from functools import reduce
 from pathlib import PosixPath
 from typing import TYPE_CHECKING
 
@@ -38,7 +40,17 @@ from .da import DataArray
 if TYPE_CHECKING:
     from pathlib import Path
 
+
 # - global parameters -------------------------
+def is_equal(aa: np.ndarray | list | str, bb: np.ndarray | list | str) -> bool:
+    """..."""
+    if not isinstance(aa, type(bb)):
+        return False
+
+    if isinstance(aa, np.ndarray):
+        return np.array_equal(aa, bb)
+
+    return aa == bb
 
 
 # - class Dataset ----------------------------------
@@ -67,11 +79,23 @@ class Dataset:
         """Define dimensions and coordinates of the new Dataset."""
         self.coords = Coords()
         self.dims = ()
+        list_attrs = []
         for da in self.data_vars.values():
             for coord in da.get_coords:
                 if coord not in self.coords:
                     self.coords += coord
                     self.dims += (coord.name,)
+            if da.attrs:
+                list_attrs.append(da.attrs)
+
+        # collect attributes common to all DataArrays
+        if list_attrs and len(list_attrs) > 1:
+            common_keys = reduce(operator.and_, (set(d) for d in list_attrs))
+            self.attrs |= {
+                k: list_attrs[0][k]
+                for k in common_keys
+                if all(is_equal(list_attrs[0][k], d.get(k)) for d in list_attrs[1:])
+            }
 
     def __repr__(self: Dataset) -> str:  # pragma: no cover
         """Convert object to string representation."""
