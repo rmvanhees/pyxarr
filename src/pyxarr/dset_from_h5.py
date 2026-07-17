@@ -24,12 +24,13 @@ from __future__ import annotations
 
 __all__ = ["dset_from_h5"]
 
-from pathlib import PurePath
+from pathlib import PosixPath
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from . import Coords, DataArray
+from pyxarr import Coords, DataArray
+from pyxarr.lib.coords import _Coord
 
 if TYPE_CHECKING:
     import h5py
@@ -61,7 +62,7 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict[str, Any]:
                 "index": dset.dtype.names.index(field),
             }
         except Exception as exc:
-            raise RuntimeError(f"field {field} not in dataset {dset.name}") from exc
+            raise KeyError(f"field {field} not in dataset {dset.name}") from exc
 
     attrs = {}
     for key in dset.attrs:
@@ -95,6 +96,8 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict[str, Any]:
 
 def __get_coords(
     dset: h5py.Dataset,
+    data_sel: tuple[slice | int] | None = None,
+    dim_names: list[str, ...] | None = None,
     time_units: str | None = None,
 ) -> Coords | None:
     r"""Return coordinates of the HDF5 dataset from its dimension scales.
@@ -103,6 +106,11 @@ def __get_coords(
     ----------
     dset :  h5py.Dataset
        HDF5 dataset from which the data is read
+    data_sel :  tuple of slice or int, optional
+       A numpy slice generated for example `numpy.s\_`
+    dim_names : list of strings, optional
+       Alternative names for the dataset dimensions if not attached to dataset.
+       Default coordinate names are ['time', 'row', 'column'] for 3-D arrays.
     time_units: str, optional
        Convert time axis to numpy.datetime64
 
@@ -111,103 +119,47 @@ def __get_coords(
     Coords: coordinates of the dataset
 
     """
-    if len(dset.dims) != dset.ndim:
-        return None
+    if data_sel is None:
+        data_sel = dset.ndim * (np.s_[:],)
+    if dset.ndim == 1:
+        data_sel = (data_sel,)
 
     coords = Coords()
-    co_dsets = ()
-    try:
-        for dim in dset.dims:
-            # get name of dimension
-            name = PurePath(dim[0].name).name
+    # loop over dimension_scales of dataset
+    for ii, dim_scale in enumerate(dset.dims):
+        # loop over dataset of each dimension scale
+        for dim_dset in dim_scale.values():
+            name = PosixPath(dim_dset.name).name
+            # Tropomi CKD: remove specification of spectral band
+            if name.startswith("row") or name.startswith("column"):
+                name = name.split(" ")[0]
+            # print(name, dim_dset.shape, dim_dset.dtype)
+            if time_units is not None:
+                raise NotImplementedError("time_units not yet implemented")
+            attrs = __get_attrs(dim_dset, None)
+            coords += _Coord(name, dim_dset[data_sel[ii]], dim_ref=name, attrs=attrs)
 
-            # find dimension scale and obtain it attributes
-            co_grp = dset.parent
-            while name not in co_grp:
-                # print(name, dim, co_grp, co_grp.parent)
-                if co_grp == co_grp.parent:
-                    raise RuntimeError("can't find dimension scale")
-                co_grp = co_grp.parent
+    if coords:
+        return coords
 
-            co_dsets += (co_grp[name],)
-    except RuntimeError as exc:
-        raise RuntimeError(
-            f"failed to collect coordinates of dataset {dset.name}"
-        ) from exc
-
-    for co_dset in co_dsets:
-        name = PurePath(co_dset.name).name
-        if name.startswith("row") or name.startswith("column"):
-            name = name.split(" ")[0]
-
-        data = co_dset[:]
-        coord_attrs = __get_attrs(co_dset, None)
-        if (
-            time_units is not None
-            and "units" in coord_attrs
-            and coord_attrs["units"].startswith(("days since", "seconds since"))
-        ):
-            values = np.datetime64(
-                coord_attrs["units"][11:]
-                if coord_attrs["units"][10] == " "
-                else coord_attrs["units"][14:]
-            )
-            match time_units:
-                case "ns":
-                    values += np.rint(1e9 * data).astype(f"timedelta64[{time_units}]")
-                case "us":
-                    values += np.rint(1e6 * data).astype(f"timedelta64[{time_units}]")
-                case "ms":
-                    values += np.rint(1e3 * data).astype(f"timedelta64[{time_units}]")
-                case "s":
-                    values += np.rint(data).astype(f"timedelta64[{time_units}]")
-                case "D" if coord_attrs["units"].startswith("days since"):
-                    values += np.rint(data).astype(f"timedelta64[{time_units}]")
-                case _:
-                    raise KeyError(f"unknown numpy.timedelta64 unit: '{time_units}'")
-
-            data = values
-
-        # add this coordinate
-        coords += (name, data)
-        for key, val in coord_attrs.items():
-            coords[name].attrs[key] = val
-
-    return coords
-
-
-def __default_coords(
-    dset: h5py.Dataset | np.ndarray,
-    dim_names: list | None,
-) -> Coords:
-    r"""Create coordinates if HDF5 dataset has no dimension scales.
-
-    Parameters
-    ----------
-    dset :  h5py.Dataset or np.ndarray
-       HDF5 dataset from which the data is read, or numpy array
-    dim_names : list of strings
-       Alternative names for the dataset dimensions if not attached to dataset
-       Default coordinate names are ['time', ['row', ['column']]]
-
-    Returns
-    -------
-    Coords: coordinates according to the dataset shape
-
-    """
+    # assign coordinates to DataArray
     if dim_names is None:
         if dset.ndim > 3:
             raise ValueError("not implemented for ndim > 3")
-
         dim_names = ["time", "row", "column"][-dset.ndim :]
+    else:
+        if dset.ndim != len(dim_names):
+            raise ValueError(
+                "number of dimension names not equal to dataset dimensions"
+            )
 
-    coords = Coords()
+    coords = []
     for ii in range(dset.ndim):
         co_dtype = "u2" if ((dset.shape[ii] - 1) >> 16) == 0 else "u4"
-        values = np.arange(dset.shape[ii], dtype=co_dtype)
-        coords += (dim_names[ii], values)
+        co_data = np.arange(dset.shape[ii], dtype=co_dtype)
+        coords.append((dim_names[ii], co_data[data_sel[ii]]))
 
-    return coords
+    return Coords(coords)
 
 
 def __get_data(
@@ -255,6 +207,7 @@ def __check_selection(data_sel: slice | tuple | int, ndim: int) -> slice | tuple
     * [Ellipsis] np.s\_[0, ...], np.s\_[..., 4], np.s\_[0, ..., 4]
 
     """
+    # print(f"data_sel: {data_sel}")
     if data_sel in (np.s_[:], np.s_[...], np.s_[()]):
         return None
 
@@ -339,19 +292,13 @@ def dset_from_h5(
     # print(f"data_sel: {data_sel}")
 
     # get coordinates of the dataset
-    coords = []
-    if dim_names is None:
-        coords = __get_coords(h5_dset, time_units)
-    if not coords:
-        coords = __default_coords(h5_dset, dim_names)
-
-    if data_sel is not None:
-        coords_new = Coords()
-        for coord, sel in zip(coords, data_sel, strict=True):
-            coords_new += coord[sel]
-        coords = coords_new
-    # print(f"dim_names: {dim_names}")
-    # print(f"1: coords: {coords}, {len(coords)}")
+    try:
+        coords = __get_coords(h5_dset, data_sel, dim_names, time_units)
+    except (KeyError, ValueError) as exc:
+        raise RuntimeError("Failed to read dataset dimensions") from exc
+    except NotImplementedError as exc:
+        print(exc)
+    # print(f"1: coords: {coords}")
 
     # get values for the dataset
     data = __get_data(h5_dset, data_sel, field)
@@ -370,6 +317,6 @@ def dset_from_h5(
     attrs = __get_attrs(h5_dset, field)
 
     # get name of the dataset
-    name = PurePath(h5_dset.name).name if field is None else field
+    name = PosixPath(h5_dset.name).name if field is None else field
 
     return DataArray(data, coords=coords, name=name, attrs=attrs)
