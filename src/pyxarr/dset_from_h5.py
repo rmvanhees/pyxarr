@@ -55,14 +55,12 @@ def __get_attrs(dset: h5py.Dataset, field: str) -> dict[str, Any]:
     """
     _field = None
     if field is not None:
-        try:
-            _field = {
-                "name": field,
-                "oneof": len(dset.dtype.names),
-                "index": dset.dtype.names.index(field),
-            }
-        except Exception as exc:
-            raise KeyError(f"field {field} not in dataset {dset.name}") from exc
+        # Note field should exist, else get_data() should complain
+        _field = {
+            "name": field,
+            "oneof": len(dset.dtype.names),
+            "index": dset.dtype.names.index(field),
+        }
 
     attrs = {}
     for key in dset.attrs:
@@ -342,14 +340,11 @@ def dset_from_h5(
     data = __get_data(h5_dset, data_sel, field)
 
     # - check if dimension of dataset and coordinates agree
-    if len(coords) > 0 and data.ndim < len(coords):
-        for ii in reversed(range(len(coords))):
-            if np.isscalar(coords[ii][1]):
-                del coords[ii]
-
-    # - remove empty coordinates
-    # coords = [(key, val) for key, val in coords if val is not None]
-    # print(f"2: coords: {coords}")
+    # RvH: I have disabled the code below because the if-condition cannot be met.
+    # if len(coords) > 0 and data.ndim < len(coords):
+    #    for ii in reversed(range(len(coords))):
+    #        if np.isscalar(coords[ii][1]):
+    #            del coords[ii]
 
     # get dataset attributes
     attrs = __get_attrs(h5_dset, field)

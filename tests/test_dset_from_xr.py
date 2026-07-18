@@ -62,6 +62,14 @@ class TestFromXda:
                 attrs={
                     "long_name": "numpy.arange",
                     "units": "1",
+                    "A": 1,
+                    "A0": 1.0,
+                    "B": (1, 2, 3, 4, 5),
+                    "B0": (1, 2, 4, 5),
+                    "C": np.array(["aapje", "teun"]),
+                    "C0": np.array([1, 2], dtype="u2"),
+                    "D": "dit is een tekst",
+                    "D0": "Dit is een tekst",
                 },
             )
         )
