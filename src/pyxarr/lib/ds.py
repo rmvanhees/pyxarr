@@ -62,8 +62,6 @@ class Dataset:
     ----------
     data_vars :  dict[str, DataArray], optional
       dictionary of a set multi-dimensional arrays and their names
-    coords :  Coords, optional
-      common coordinates of each of the DataArrays
     attrs :  dict[str, Any], optional
       attributes providing meta-data of the array
 
@@ -72,18 +70,18 @@ class Dataset:
     data_vars: dict[str, DataArray] = field(default_factory=dict)
     _: KW_ONLY
     attrs: dict = field(default_factory=dict)
-    coords: Coords = field(default_factory=Coords, init=False)
     dims: tuple[str, ...] = field(default_factory=tuple, init=False)
+    _coords: Coords = field(default_factory=Coords, init=False)
 
     def __post_init__(self: Dataset) -> None:
         """Define dimensions and coordinates of the new Dataset."""
-        self.coords = Coords()
+        self._coords = Coords()
         self.dims = ()
         list_attrs = []
         for da in self.data_vars.values():
             for coord in da.get_coords:
-                if coord not in self.coords:
-                    self.coords += coord
+                if coord not in self._coords:
+                    self._coords += coord
                     self.dims += (coord.name,)
             if da.attrs:
                 list_attrs.append(da.attrs)
@@ -102,17 +100,17 @@ class Dataset:
         msg = "<pyxarr.Dataset>"
         msg += (
             f"\nDimensions:  "
-            f"({', '.join([f'{x.name}: {len(x.values)}' for x in self.coords])})"
+            f"({', '.join([f'{x.name}: {len(x.values)}' for x in self._coords])})"
         )
-        if self.coords:
+        if self._coords:
             msg += "\nCoordinates:"
             with np.printoptions(threshold=5, floatmode="maxprec", linewidth=110):
-                for coord in self.coords:
+                for coord in self._coords:
                     msg += f"\n  * {coord.name:8s} {coord.values.dtype} {coord.values}"
         msg += "\nData variables:"
         if self.data_vars:
             for key, dset in self.data_vars.items():
-                if key in self.coords:
+                if key in self._coords:
                     continue
                 nbytes = dset.values.nbytes
                 for prefix in ["", "k", "M", "G", "T"]:
@@ -156,7 +154,11 @@ class Dataset:
             if not self[key] == other[key]:
                 return False
 
-        return self.attrs == other.attrs and self.coords == other.coords
+        return (
+            self.attrs.keys() == other.attrs.keys()  # ToDo: perform full compare
+            and self.coords == other._coords
+            and self.dims == other.dims
+        )
 
     def __getitem__(self: Dataset, name: str) -> DataArray | None:
         """Return DataArray with given name."""
@@ -170,8 +172,8 @@ class Dataset:
             raise ValueError("you can only add DataArrays to a Dataset")
 
         for coord in xda.get_coords:
-            if coord not in self.coords:
-                self.coords += coord
+            if coord not in self._coords:
+                self._coords += coord
                 self.dims += (coord.name,)
 
         self.data_vars[name] = xda
@@ -211,6 +213,11 @@ class Dataset:
         if not res["compounds"]:
             del res["compounds"]
         return res
+
+    @property
+    def get_coords(self: Dataset) -> Coords:
+        """Return Dataset coordinates."""
+        return self._coords.copy()
 
     def to_netcdf(
         self: Dataset,
