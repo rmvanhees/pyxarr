@@ -367,10 +367,50 @@ class DataArray:
                 values = np.take(values, mask.nonzero()[0], axis=ix)
                 co_vals = self._coords[name].values
                 new_coords.append(
-                    (name, (name, None if co_vals is None else co_vals[mask]))
+                    (name, [name, None if co_vals is None else co_vals[mask]])
                 )
             else:
-                new_coords.append((name, (name, self._coords[name].values)))
+                new_coords.append((name, [self._coords[name].values]))
+
+        return DataArray(
+            values,
+            coords=new_coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
+
+    def sortby(self: DataArray, dim_name: str) -> DataArray:
+        """Sort data along one dimension."""
+        if dim_name not in self._coords:
+            raise KeyError(f"{dim_name} not found in coordinates of DataArray")
+
+        new_coords = []
+        sort_indx = np.argsort(self._coords[dim_name].values)
+        if self.values.ndim == 1:
+            values = self.values[sort_indx]
+            for name in self.dims:
+                dim_ref = self._coords[name].dim_ref
+                new_coords.append(
+                    (name, [dim_ref, self._coords[name].values[sort_indx]])
+                )
+        else:
+            dim_indx = self.dims.index(dim_name)
+            if dim_indx >= self.values.ndim:
+                dim_indx = self.dims.index(self._coords[dim_name].dim_ref)
+
+            aa = np.zeros(self.shape, dtype=int)
+            aa_shape = [1, 1, 1]
+            aa_shape[dim_indx] = self.shape[dim_indx]
+            aa += sort_indx.reshape(aa_shape)
+            values = np.take_along_axis(self.values, aa, axis=dim_indx)
+            for name in self.dims:
+                dim_ref = self._coords[name].dim_ref
+                if name == dim_name or name == self._coords[dim_name].dim_ref:
+                    new_coords.append(
+                        (name, [dim_ref, self._coords[name].values[sort_indx]])
+                    )
+                else:
+                    new_coords.append((name, [dim_ref, self._coords[name].values]))
 
         return DataArray(
             values,

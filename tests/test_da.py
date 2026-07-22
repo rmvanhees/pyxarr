@@ -148,6 +148,71 @@ class TestDataArray:
         assert da_full.sel(Y=mask_y, X=mask_x).get_coords["Y"].values == np.array([3])
         assert da_full.sel(Y=mask_y, X=mask_x).get_coords["T"].values == np.array([13])
 
+    def test_sortby(self: TestDataArray) -> None:
+        """Unit-test for sortby method."""
+        da_01 = DataArray(
+            np.arange(13),
+            coords={
+                "X": [0, 3, 4, 5, 6, 7, 8, 9, 2, 1, 10, 12, 11],
+                "orbit": (
+                    "X",
+                    [
+                        2300,
+                        2309,
+                        2308,
+                        2301,
+                        2302,
+                        2303,
+                        2304,
+                        2305,
+                        2306,
+                        2307,
+                        2310,
+                        2312,
+                        2311,
+                    ],
+                ),
+            },
+        )
+        da_02 = da_01.sortby("X")
+        aa = da_02.get_coords["X"].values
+        assert np.all(aa[:-1] <= aa[1:])
+        da_02 = da_01.sortby("orbit")
+        aa = da_02.get_coords["orbit"].values
+        assert np.all(aa[:-1] <= aa[1:])
+        aa = np.array([0, 3, 4, 5, 6, 7, 8, 9, 2, 1, 10, 12, 11])
+        assert np.array_equal(aa, da_02.values)
+
+        da_01 = DataArray(
+            np.arange(13 * 5 * 3).reshape(13, 5, 3),
+            coords={
+                "Z": [0, 3, 4, 5, 6, 7, 8, 9, 2, 1, 10, 12, 11],
+                "Y": list(range(5)),
+                "X": list(range(3)),
+                "orbit": (
+                    "Z",
+                    [
+                        2300,
+                        2309,
+                        2308,
+                        2301,
+                        2302,
+                        2303,
+                        2304,
+                        2305,
+                        2306,
+                        2307,
+                        2310,
+                        2312,
+                        2311,
+                    ],
+                ),
+            },
+        )
+        _ = da_01.sortby("Z")
+        _ = da_01.sortby("orbit")
+        _ = da_01.sortby("Y")
+
     def test_add(self: TestDataArray, da_full: DataArray, da_ones: DataArray) -> None:
         """Unit-test for add method."""
         # Add numpy array to DataArray
