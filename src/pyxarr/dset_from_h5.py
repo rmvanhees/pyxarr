@@ -243,12 +243,12 @@ def __check_selection(data_sel: slice | tuple | int, ndim: int) -> slice | tuple
     * [Ellipsis] np.s\_[0, ...], np.s\_[..., 4], np.s\_[0, ..., 4]
 
     """
+    if np.isscalar(data_sel):
+        return np.s_[data_sel : data_sel + 1]
+
     # print(f"data_sel: {data_sel}")
     if data_sel in (np.s_[:], np.s_[...], np.s_[()]):
         return None
-
-    if np.isscalar(data_sel):
-        return np.s_[data_sel : data_sel + 1]
 
     buff = ()
     for val in data_sel:
