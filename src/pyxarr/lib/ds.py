@@ -40,9 +40,11 @@ from .da import DataArray
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from numpy.typing import NDArray
+
 
 # - global parameters -------------------------
-def is_equal(aa: np.ndarray | list | str, bb: np.ndarray | list | str) -> bool:
+def is_equal(aa: NDArray | list | str, bb: NDArray | list | str) -> bool:
     """..."""
     if not isinstance(aa, type(bb)):
         return False
@@ -156,7 +158,7 @@ class Dataset:
 
         return (
             self.attrs.keys() == other.attrs.keys()  # ToDo: perform full compare
-            and self.coords == other._coords
+            and self._coords == other._coords
             and self.dims == other.dims
         )
 
@@ -218,6 +220,19 @@ class Dataset:
     def get_coords(self: Dataset) -> Coords:
         """Return Dataset coordinates."""
         return self._coords.copy()
+
+    def sel(self: Dataset, **kwargs: dict[str, slice | NDArray[bool]]) -> Dataset:
+        """Select data along one or more axes using a slice or boolean array.
+
+        Limitations
+        -----------
+        Works currently only on dimension coordinates.
+
+        """
+        return Dataset(
+            {k: v.sel(kwargs) for k, v in self.data_vars.items()},
+            attrs=self.attrs,
+        )
 
     def to_netcdf(
         self: Dataset,

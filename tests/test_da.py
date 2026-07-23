@@ -145,8 +145,15 @@ class TestDataArray:
         )
         # add auxilary coordinate
         da_full.add_coord("T", ["Y", list(range(10, 21))])
+        assert da_full.shape == (5, 11, 17)
         assert da_full.sel(Y=mask_y, X=mask_x).get_coords["Y"].values == np.array([3])
         assert da_full.sel(Y=mask_y, X=mask_x).get_coords["T"].values == np.array([13])
+
+        # check comby of slice and mask
+        da_01 = da_full.sel(Y=np.s_[2:5], X=mask_x)
+        assert da_01.shape == (5, 3, 1)
+        assert np.array_equal(da_01.get_coords["Y"].values, np.array([2, 3, 4]))
+        assert np.array_equal(da_01.get_coords["T"].values, np.array([12, 13, 14]))
 
     def test_sortby(self: TestDataArray) -> None:
         """Unit-test for sortby method."""

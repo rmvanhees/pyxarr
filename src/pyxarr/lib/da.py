@@ -331,49 +331,47 @@ class DataArray:
         """Return coordinate."""
         return self._coords.copy()
 
-    def sel(self: DataArray, **kwargs: dict[str, NDArray[bool]]) -> DataArray:
-        """Select data along one axis using a boolean array.
+    def sel(self: DataArray, **kwargs: dict[str, slice | NDArray[bool]]) -> DataArray:
+        """Select data along one or more axes using a slice or boolean array.
 
         Limitations
         -----------
         Works currently only on dimension coordinates.
 
         """
-        values = self.values.copy()
+        data_sel = ()
         new_coords = []
+        values = self.values.copy()
         for ix, name in enumerate(self.dims):
-            if not self._coords[name].is_dimension:
-                co_val = ()
-                for co in new_coords:
-                    if self._coords[name].dim_ref == co[0]:
-                        co_val = (
-                            co[0],
-                            self._coords[name].values[kwargs[co[0]]],
-                        )
-                        break
-
-                if co_val:
-                    new_coords.append((name, co_val))
-                continue
-
-            if name in kwargs:
-                if not (
-                    isinstance(kwargs[name], np.ndarray)
-                    and kwargs[name].dtype == np.bool
+            dim_ref = (
+                name if self._coords[name].is_dimension else self._coords[name].dim_ref
+            )
+            new_slice = slice(None, None, None)
+            if dim_ref in kwargs:
+                if isinstance(kwargs[dim_ref], slice):
+                    new_coords.append(
+                        (name, [dim_ref, self._coords[name].values[kwargs[dim_ref]]])
+                    )
+                    new_slice = kwargs[dim_ref]
+                elif (
+                    isinstance(kwargs[dim_ref], np.ndarray)
+                    and kwargs[dim_ref].dtype == np.bool
                 ):
-                    raise ValueError(f"array '{name}' should be boolean numpy array")
-
-                mask = kwargs[name]
-                values = np.take(values, mask.nonzero()[0], axis=ix)
-                co_vals = self._coords[name].values
-                new_coords.append(
-                    (name, [name, None if co_vals is None else co_vals[mask]])
-                )
+                    mask = kwargs[dim_ref]
+                    new_coords.append(
+                        (name, [dim_ref, self._coords[name].values[mask]])
+                    )
+                    if name == dim_ref:  # only for dimension coordinates
+                        values = np.take(values, mask.nonzero()[0], axis=ix)
+                else:
+                    raise ValueError(f"{dim_ref}' should be slice or boolean array")
             else:
-                new_coords.append((name, [self._coords[name].values]))
+                new_coords.append((name, [dim_ref, self._coords[name].values]))
+            if name == dim_ref:  # only for dimension coordinates
+                data_sel += (new_slice,)
 
         return DataArray(
-            values,
+            values[data_sel],
             coords=new_coords,
             name=self.name,
             attrs=self.attrs,
@@ -405,7 +403,7 @@ class DataArray:
             values = np.take_along_axis(self.values, aa, axis=dim_indx)
             for name in self.dims:
                 dim_ref = self._coords[name].dim_ref
-                if name == dim_name or name == self._coords[dim_name].dim_ref:
+                if name in (dim_name, self._coords[dim_name].dim_ref):
                     new_coords.append(
                         (name, [dim_ref, self._coords[name].values[sort_indx]])
                     )
