@@ -33,6 +33,7 @@ import numpy as np
 from h5yaml.template_nc import TemplateNc
 
 from .coords import Coords
+# from pyxarr import Coords
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -378,37 +379,51 @@ class DataArray:
         )
 
     def sel(self: DataArray, **kwargs: dict[str, slice]) -> DataArray:
-        """Select data along one or more axes using a coordinate-data range.
-
-        Limitations
-        -----------
-        Works currently only on dimension coordinates.
-
-        """
+        """Select data along one or more axes using a coordinate-data range."""
         data_sel = ()
-        new_coords = []
+        new_coords = len(self.dims) * [None]
         values = self.values.copy()
         for ix, name in enumerate(self.dims):
-            dim_ref = (
-                name if self._coords[name].is_dimension else self._coords[name].dim_ref
-            )
-            new_slice = slice(None, None, None)
-            if dim_ref in kwargs:
-                if isinstance(kwargs[dim_ref], slice):
-                    mask = (self._coords[name].values >= kwargs[dim_ref].start) & (
-                        self._coords[name].values <= kwargs[dim_ref].stop
+            if name in kwargs:
+                if isinstance(kwargs[name], slice):
+                    mask = (self._coords[name].values >= kwargs[name].start) & (
+                        self._coords[name].values <= kwargs[name].stop
                     )
-                    new_coords.append(
-                        (name, [dim_ref, self._coords[name].values[mask]])
+                    new_coords[ix] = (
+                        name,
+                        [self._coords[name].dim_ref, self._coords[name].values[mask]],
                     )
-                    if name == dim_ref:  # only for dimension coordinates
+                    if self._coords[name].is_dimension:
                         values = np.take(values, mask.nonzero()[0], axis=ix)
+
+                        # check for auxiliary coordinate which refers to this one
+                        for iy, coord in enumerate(self._coords):
+                            if name != coord.name:
+                                new_coords[iy] = (
+                                    coord.name,
+                                    [
+                                        self._coords[coord.name].dim_ref,
+                                        self._coords[coord.name].values[mask],
+                                    ],
+                                )
+                    else:  # auxiliary coordinates
+                        dim_ref = self._coords[name].dim_ref
+                        iy = self.dims.index(dim_ref)
+                        new_coords[iy] = (
+                            dim_ref,
+                            [dim_ref, self._coords[dim_ref].values[mask]],
+                        )
+                        values = np.take(values, mask.nonzero()[0], axis=iy)
                 else:
                     raise ValueError(f"{dim_ref}' should be slice or boolean array")
-            else:
-                new_coords.append((name, [dim_ref, self._coords[name].values]))
-            if name == dim_ref:  # only for dimension coordinates
-                data_sel += (new_slice,)
+            elif new_coords[ix] is None:
+                new_coords[ix] = (
+                    name,
+                    [self._coords[name].dim_ref, self._coords[name].values],
+                )
+
+            if self._coords[name].is_dimension:
+                data_sel += (slice(None, None, None),)
 
         return DataArray(
             values[data_sel],

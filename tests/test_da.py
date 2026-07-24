@@ -133,27 +133,53 @@ class TestDataArray:
         assert da_full[2:, 3:, :5].shape == (3, 8, 5)
         assert da_full[2, :, :].shape == (1, 11, 17)
 
-    def test_sel(self: TestDataArray, da_full: DataArray) -> None:
-        """Unit-test for method DataArray.sel()."""
+    def test_isel(self: TestDataArray, da_full: DataArray) -> None:
+        """Unit-test for method DataArray.isel()."""
         mask_y = np.zeros(11, dtype=bool)
         mask_y[3] = True
         mask_x = np.zeros(17, dtype=bool)
         mask_x[5] = True
         assert np.array_equal(
-            da_full.sel(Y=mask_y, X=mask_x).values,
+            da_full.isel(Y=mask_y, X=mask_x).values,
             np.array([[[56.0]], [[243.0]], [[430.0]], [[617.0]], [[804.0]]]),
         )
         # add auxilary coordinate
         da_full.add_coord("T", ["Y", list(range(10, 21))])
         assert da_full.shape == (5, 11, 17)
-        assert da_full.sel(Y=mask_y, X=mask_x).get_coords["Y"].values == np.array([3])
-        assert da_full.sel(Y=mask_y, X=mask_x).get_coords["T"].values == np.array([13])
+        print(da_full.isel(Y=mask_y, X=mask_x).get_coords["Y"].values)
+        assert da_full.isel(Y=mask_y, X=mask_x).get_coords["Y"].values == np.array([3])
+        print(da_full.isel(Y=mask_y, X=mask_x).get_coords["T"].values)
+        assert da_full.isel(Y=mask_y, X=mask_x).get_coords["T"].values == np.array([13])
 
         # check comby of slice and mask
-        da_01 = da_full.sel(Y=np.s_[2:5], X=mask_x)
+        da_01 = da_full.isel(Y=slice(2, 5), X=mask_x)
         assert da_01.shape == (5, 3, 1)
         assert np.array_equal(da_01.get_coords["Y"].values, np.array([2, 3, 4]))
         assert np.array_equal(da_01.get_coords["T"].values, np.array([12, 13, 14]))
+
+    def test_sel(self: TestDataArray) -> None:
+        """Unit-test for method DataArray.sel()."""
+        da_00 = DataArray(
+            np.arange(3600),
+            coords={
+                "time": np.arange(
+                    "2026-07-24T00:00:00",
+                    "2026-07-24T05:00:00",
+                    5,
+                    dtype="datetime64[s]",
+                ),
+                "orbit": ["time", np.arange(2200, 5800, dtype=int)],
+            },
+        )
+        res = da_00.sel(orbit=slice(2500, 2600))
+        assert len(res.get_coords["time"]) == len(res.get_coords["orbit"]) == 101
+        res = da_00.sel(
+            time=slice(
+                np.datetime64("2026-07-24T00:25:00"),
+                np.datetime64("2026-07-24T00:33:20"),
+            )
+        )
+        assert len(res.get_coords["time"]) == len(res.get_coords["orbit"]) == 101
 
     def test_sortby(self: TestDataArray) -> None:
         """Unit-test for sortby method."""
