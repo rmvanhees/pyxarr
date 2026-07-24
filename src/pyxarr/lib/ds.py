@@ -180,7 +180,7 @@ class Dataset:
 
         self.data_vars[name] = xda
 
-    def asdict(self: Dataset, group: None | str = None) -> dict:
+    def asdict(self: Dataset, group: str | None = None) -> dict:
         """Return Dataset as dictionary.
 
         Parameters
@@ -249,10 +249,10 @@ class Dataset:
 
     def to_netcdf(
         self: Dataset,
-        path: None | str | Path = None,
+        path: str | Path | None = None,
         mode: str = "w",
-        group: None | str = None,
-        attrs_group: None | dict = None,
+        group: str | None = None,
+        attrs_group: dict | None = None,
     ) -> None:
         """Write Dataset contents to netCDF4 file.
 

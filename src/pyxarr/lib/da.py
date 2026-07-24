@@ -261,7 +261,7 @@ class DataArray:
             frozen=True,
         )(*self.values.shape)
 
-    def asdict(self: DataArray, group: None | str = None) -> dict:
+    def asdict(self: DataArray, group: str | None = None) -> dict:
         """Return DataArray as dictionary.
 
         Parameters
@@ -395,9 +395,8 @@ class DataArray:
             new_slice = slice(None, None, None)
             if dim_ref in kwargs:
                 if isinstance(kwargs[dim_ref], slice):
-                    mask = (
-                        (self._coords[name].values >= kwargs[dim_ref].start)
-                        & (self._coords[name].values <= kwargs[dim_ref].stop)
+                    mask = (self._coords[name].values >= kwargs[dim_ref].start) & (
+                        self._coords[name].values <= kwargs[dim_ref].stop
                     )
                     new_coords.append(
                         (name, [dim_ref, self._coords[name].values[mask]])
@@ -579,10 +578,10 @@ class DataArray:
 
     def to_netcdf(
         self: DataArray,
-        path: None | str | Path = None,
+        path: str | Path | None = None,
         mode: str = "w",
-        group: None | str = None,
-        attrs_group: None | dict = None,
+        group: str | None = None,
+        attrs_group: dict | None = None,
     ) -> None:
         """Write DataArray contents to netCDF4 file.
 
