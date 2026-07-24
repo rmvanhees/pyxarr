@@ -33,7 +33,6 @@ import numpy as np
 from h5yaml.template_nc import TemplateNc
 
 from .coords import Coords
-# from pyxarr import Coords
 
 if TYPE_CHECKING:
     from pathlib import Path
