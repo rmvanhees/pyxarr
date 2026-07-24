@@ -221,7 +221,7 @@ class Dataset:
         """Return Dataset coordinates."""
         return self._coords.copy()
 
-    def sel(self: Dataset, **kwargs: dict[str, slice | NDArray[bool]]) -> Dataset:
+    def isel(self: Dataset, **kwargs: dict[str, slice | NDArray[bool]]) -> Dataset:
         """Select data along one or more axes using a slice or boolean array.
 
         Limitations
@@ -230,7 +230,20 @@ class Dataset:
 
         """
         return Dataset(
-            {k: v.sel(kwargs) for k, v in self.data_vars.items()},
+            {k: v.isel(**kwargs) for k, v in self.data_vars.items()},
+            attrs=self.attrs,
+        )
+
+    def sel(self: Dataset, **kwargs: dict[str, slice]) -> Dataset:
+        """Select data along one or more axes on coordinate-data range.
+
+        Limitations
+        -----------
+        Works currently only on dimension coordinates.
+
+        """
+        return Dataset(
+            {k: v.sel(**kwargs) for k, v in self.data_vars.items()},
             attrs=self.attrs,
         )
 

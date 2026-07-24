@@ -331,7 +331,7 @@ class DataArray:
         """Return coordinate."""
         return self._coords.copy()
 
-    def sel(self: DataArray, **kwargs: dict[str, slice | NDArray[bool]]) -> DataArray:
+    def isel(self: DataArray, **kwargs: dict[str, slice | NDArray[bool]]) -> DataArray:
         """Select data along one or more axes using a slice or boolean array.
 
         Limitations
@@ -358,6 +358,47 @@ class DataArray:
                     and kwargs[dim_ref].dtype == np.bool
                 ):
                     mask = kwargs[dim_ref]
+                    new_coords.append(
+                        (name, [dim_ref, self._coords[name].values[mask]])
+                    )
+                    if name == dim_ref:  # only for dimension coordinates
+                        values = np.take(values, mask.nonzero()[0], axis=ix)
+                else:
+                    raise ValueError(f"{dim_ref}' should be slice or boolean array")
+            else:
+                new_coords.append((name, [dim_ref, self._coords[name].values]))
+            if name == dim_ref:  # only for dimension coordinates
+                data_sel += (new_slice,)
+
+        return DataArray(
+            values[data_sel],
+            coords=new_coords,
+            name=self.name,
+            attrs=self.attrs,
+        )
+
+    def sel(self: DataArray, **kwargs: dict[str, slice]) -> DataArray:
+        """Select data along one or more axes using a coordinate-data range.
+
+        Limitations
+        -----------
+        Works currently only on dimension coordinates.
+
+        """
+        data_sel = ()
+        new_coords = []
+        values = self.values.copy()
+        for ix, name in enumerate(self.dims):
+            dim_ref = (
+                name if self._coords[name].is_dimension else self._coords[name].dim_ref
+            )
+            new_slice = slice(None, None, None)
+            if dim_ref in kwargs:
+                if isinstance(kwargs[dim_ref], slice):
+                    mask = (
+                        (self._coords[name].values >= kwargs[dim_ref].start)
+                        & (self._coords[name].values <= kwargs[dim_ref].stop)
+                    )
                     new_coords.append(
                         (name, [dim_ref, self._coords[name].values[mask]])
                     )
