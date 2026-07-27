@@ -235,13 +235,7 @@ class Dataset:
         )
 
     def sel(self: Dataset, **kwargs: dict[str, slice]) -> Dataset:
-        """Select data along one or more axes on coordinate-data range.
-
-        Limitations
-        -----------
-        Works currently only on dimension coordinates.
-
-        """
+        """Select data along one or more axes on coordinate-data range."""
         return Dataset(
             {k: v.sel(**kwargs) for k, v in self.data_vars.items()},
             attrs=self.attrs,

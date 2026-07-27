@@ -397,7 +397,7 @@ class DataArray:
 
                         # check for auxiliary coordinate which refers to this one
                         for iy, coord in enumerate(self._coords):
-                            if name != coord.name:
+                            if name == coord.dim_ref and name != coord.name:
                                 new_coords[iy] = (
                                     coord.name,
                                     [
