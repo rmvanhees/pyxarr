@@ -115,6 +115,7 @@ class DataArray:
             self._coords = Coords(list(zip(self.dims, _val, strict=True)))
         else:
             raise ValueError("No coordinates or dimensions for each data dimension")
+        self.coords = None
 
     def __repr__(self: DataArray) -> str:  # pragma: no cover
         """Convert object to string representation."""
@@ -467,8 +468,49 @@ class DataArray:
         return DataArray(
             values,
             coords=new_coords,
+            attrs=self.attrs.copy(),
             name=self.name,
-            attrs=self.attrs,
+        )
+
+    def copy(self: DataArray) -> DataArray:
+        """Return copy of current DataArray object."""
+        return DataArray(
+            self.values.copy(),
+            coords=self._coords.copy(),
+            attrs=self.attrs.copy(),
+            name=self.name,
+        )
+
+    def concat(
+        self: DataArray,
+        objs: DataArray | tuple[DataArray, ...],
+        *,
+        dim: str | None,
+    ) -> DataArray:
+        """Concatenate DataArray objects along a new or existing dimension."""
+        if not isinstance(objs, DataArray | tuple):
+            raise ValueError(
+                "first parameter must be a DataArray or tuple of DataArrays"
+            )
+        da_tuple = (self, *objs) if isinstance(objs, tuple) else (self, objs)
+
+        try:
+            axis = None if dim is None else self.dims.index(dim)
+        except ValueError as exc:
+            raise ValueError from exc
+
+        values = np.concatenate([x.values for x in da_tuple], axis=axis)
+        co_dim = np.concatenate(tuple(x.get_coords[dim].values for x in da_tuple))
+        new_coords = (
+            {"new_dim": np.arange(values.size)}
+            if dim is None
+            else {k: co_dim if k == dim else self._coords[k].values for k in self.dims}
+        )
+        return DataArray(
+            values,
+            coords=new_coords,
+            attrs=self.attrs.copy(),
+            name=self.name,
         )
 
     def mean(
