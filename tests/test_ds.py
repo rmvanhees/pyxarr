@@ -109,3 +109,44 @@ class TestDataset:
             ds_add["foo"] = np.ones((24, 1, 17))
         assert "you can only add DataArrays to a Dataset" in str(excinfo.value)
         assert sorted(ds_dict.attrs.keys()) == ["A", "B", "C", "D", "units"]
+
+    def test_sortby(self: TestDataset) -> None:
+        """Unit-test for sortby method."""
+        orbits = np.array(
+            [
+                2300,
+                2309,
+                2308,
+                2301,
+                2302,
+                2303,
+                2304,
+                2305,
+                2306,
+                2307,
+                2310,
+                2312,
+                2311,
+            ],
+        )
+
+        da_01 = DataArray(
+            np.arange(13),
+            coords={
+                "Z": [0, 3, 4, 5, 6, 7, 8, 9, 2, 1, 10, 12, 11],
+                "orbit": ("Z", orbits),
+            },
+        )
+        da_03 = DataArray(
+            np.arange(13 * 5 * 3).reshape(13, 5, 3),
+            coords={
+                "Z": [0, 3, 4, 5, 6, 7, 8, 9, 2, 1, 10, 12, 11],
+                "Y": list(range(5)),
+                "X": list(range(3)),
+                "orbit": ("Z", orbits),
+            },
+        )
+        ds_00 = Dataset(
+            {"da_01": da_01, "da_03": da_03},
+        )
+        _ = ds_00.sortby("orbit")

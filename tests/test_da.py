@@ -183,28 +183,29 @@ class TestDataArray:
 
     def test_sortby(self: TestDataArray) -> None:
         """Unit-test for sortby method."""
+        orbits = np.array(
+            [
+                2300,
+                2309,
+                2308,
+                2301,
+                2302,
+                2303,
+                2304,
+                2305,
+                2306,
+                2307,
+                2310,
+                2312,
+                2311,
+            ],
+        )
+
         da_01 = DataArray(
             np.arange(13),
             coords={
                 "X": [0, 3, 4, 5, 6, 7, 8, 9, 2, 1, 10, 12, 11],
-                "orbit": (
-                    "X",
-                    [
-                        2300,
-                        2309,
-                        2308,
-                        2301,
-                        2302,
-                        2303,
-                        2304,
-                        2305,
-                        2306,
-                        2307,
-                        2310,
-                        2312,
-                        2311,
-                    ],
-                ),
+                "orbit": ("X", orbits),
             },
         )
         da_02 = da_01.sortby("X")
@@ -222,24 +223,7 @@ class TestDataArray:
                 "Z": [0, 3, 4, 5, 6, 7, 8, 9, 2, 1, 10, 12, 11],
                 "Y": list(range(5)),
                 "X": list(range(3)),
-                "orbit": (
-                    "Z",
-                    [
-                        2300,
-                        2309,
-                        2308,
-                        2301,
-                        2302,
-                        2303,
-                        2304,
-                        2305,
-                        2306,
-                        2307,
-                        2310,
-                        2312,
-                        2311,
-                    ],
-                ),
+                "orbit": ("Z", orbits),
             },
         )
         _ = da_01.sortby("Z")

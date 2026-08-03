@@ -439,31 +439,27 @@ class DataArray:
 
         new_coords = []
         sort_indx = np.argsort(self._coords[dim_name].values)
-        if self.values.ndim == 1:
-            values = self.values[sort_indx]
-            for name in self.dims:
-                dim_ref = self._coords[name].dim_ref
+        for name in self.dims:
+            dim_ref = self._coords[name].dim_ref
+            if dim_name in (name, dim_ref):
                 new_coords.append(
                     (name, [dim_ref, self._coords[name].values[sort_indx]])
                 )
+            else:
+                new_coords.append((name, [dim_ref, self._coords[name].values.copy()]))
+
+        if self.values.ndim == 1:
+            values = self.values[sort_indx]
         else:
             dim_indx = self.dims.index(dim_name)
             if dim_indx >= self.values.ndim:
                 dim_indx = self.dims.index(self._coords[dim_name].dim_ref)
 
             aa = np.zeros(self.shape, dtype=int)
-            aa_shape = [1, 1, 1]
+            aa_shape = self.values.ndim * [1]
             aa_shape[dim_indx] = self.shape[dim_indx]
             aa += sort_indx.reshape(aa_shape)
             values = np.take_along_axis(self.values, aa, axis=dim_indx)
-            for name in self.dims:
-                dim_ref = self._coords[name].dim_ref
-                if name in (dim_name, self._coords[dim_name].dim_ref):
-                    new_coords.append(
-                        (name, [dim_ref, self._coords[name].values[sort_indx]])
-                    )
-                else:
-                    new_coords.append((name, [dim_ref, self._coords[name].values]))
 
         return DataArray(
             values,
