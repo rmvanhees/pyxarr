@@ -246,6 +246,24 @@ class TestDataArray:
         _ = da_01.sortby("orbit")
         _ = da_01.sortby("Y")
 
+    def test_concat(self: TestDataArray) -> None:
+        """unit-test for concat method."""
+        da_00 = DataArray(np.arange(5), coords={"X": list(range(5))})
+        da_01 = DataArray(np.arange(5, 12), coords={"X": list(range(7))})
+        da_02 = DataArray(np.arange(12, 15), coords={"X": list(range(3))})
+        res = da_00.concat(da_01, dim="X")
+        assert np.array_equal(res.values, np.arange(12))
+        assert np.array_equal(
+            res.concat(da_02, dim="X").values,
+            da_00.concat((da_01, da_02), dim="X").values,
+        )
+        with pytest.raises(ValueError, match=r".* DataArray .*") as excinfo:
+            _ = res.concat([da_01, da_02], dim="X")
+        assert "DataArray or tuple of DataArrays" in str(excinfo.value)
+        with pytest.raises(ValueError, match=r"unknown dimension") as excinfo:
+            _ = res.concat((da_01, da_02), dim="Y")
+        assert "unknown dimension" in str(excinfo.value)
+
     def test_add(self: TestDataArray, da_full: DataArray, da_ones: DataArray) -> None:
         """Unit-test for add method."""
         # Add numpy array to DataArray

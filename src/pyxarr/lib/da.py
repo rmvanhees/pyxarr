@@ -497,7 +497,7 @@ class DataArray:
         try:
             axis = None if dim is None else self.dims.index(dim)
         except ValueError as exc:
-            raise ValueError from exc
+            raise ValueError("unknown dimension") from exc
 
         values = np.concatenate([x.values for x in da_tuple], axis=axis)
         co_dim = np.concatenate(tuple(x.get_coords[dim].values for x in da_tuple))
