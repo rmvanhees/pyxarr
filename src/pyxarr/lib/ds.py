@@ -241,6 +241,13 @@ class Dataset:
             attrs=self.attrs,
         )
 
+    def sortby(self: Dataset, dim_name: str) -> Dataset:
+        """Sort data of DataArray's along one dimension."""
+        return Dataset(
+            {k: v.sortby(dim_name) for k, v in self.data_vars.items()},
+            attrs=self.attrs,
+        )
+
     def to_netcdf(
         self: Dataset,
         path: str | Path | None = None,
