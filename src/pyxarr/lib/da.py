@@ -335,44 +335,93 @@ class DataArray:
     def isel(self: DataArray, **kwargs: dict[str, slice | NDArray[bool]]) -> DataArray:
         """Select data along one or more axes using a slice or boolean array.
 
-        Limitations
-        -----------
-        Works currently only on dimension coordinates.
+        See Also
+        --------
+        sel
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from pyxarr import DataArray
+        >>> da = DataArray(
+        ... np.arange(5 * 11 * 17, dtype=float).reshape(5, 11, 17),
+        ... dims=("Z", "Y", "X"))
+        >>> da.add_coord("T", ["Y", list(range(10, 21))])
+        >>> mask_y = np.zeros(11, dtype=bool)
+        >>> mask_y[3] = True
+        >>> da.isel(X=slice(3, 9)).get_coords
+        Coordinates:
+          * Z (Z) int64 [0 1 ... 3 4]
+          * Y (Y) int64 [ 0  1 ...  9 10]
+          * X (X) int64 [3 4 ... 7 8]
+            T (Y) int64 [10 11 ... 19 20]
+        >>> da.isel(Y=mask_y).get_coords
+        Coordinates:
+          * orbit (orbit) int64 [0 1 ... 3 4]
+          * Y (Y) int64 [3]
+          * X (X) int64 [ 0  1 ... 15 16]
+            T (Y) int64 [13]
+        >>> da.isel(T=slice(3, 4)).get_coords
+        Coordinates:
+          * orbit (orbit) int64 [0 1 ... 3 4]
+          * Y (Y) int64 [3]
+          * X (X) int64 [ 0  1 ... 15 16]
+            T (Y) int64 [13]
+        >>> da.isel(Y=slice(3,4)) == da.isel(T=mask_y)
+        True
 
         """
-        data_sel = ()
-        new_coords = []
+        data_sel = self.get_coords.ndim * [slice(None, None, None)]
+        new_coords = list(self.get_coords)
         values = self.values.copy()
-        for ix, name in enumerate(self.dims):
-            dim_ref = (
-                name if self._coords[name].is_dimension else self._coords[name].dim_ref
-            )
-            new_slice = slice(None, None, None)
-            if dim_ref in kwargs:
-                if isinstance(kwargs[dim_ref], slice):
-                    new_coords.append(
-                        (name, [dim_ref, self._coords[name].values[kwargs[dim_ref]]])
+        for key, kw_isel in kwargs.items():
+            if key not in self.dims:
+                continue
+
+            is_dim = self._coords[key].is_dimension
+            if not is_dim and self._coords[key].dim_ref in kwargs:
+                raise ValueError(
+                    "don't select on dimension coordinate and its auxiliary coordinate"
+                )
+            dim_name = key if is_dim else self._coords[key].dim_ref
+            dim_indx = self.dims.index(dim_name)
+            dim_aux_list = [
+                x
+                for x in self.dims
+                if (
+                    not self._coords[x].is_dimension
+                    and self._coords[x].dim_ref == dim_name
+                )
+            ]
+
+            if isinstance(kw_isel, slice):
+                new_coords[dim_indx] = (
+                    dim_name,
+                    self._coords[dim_name].values[kw_isel],
+                )
+                for dim_aux in dim_aux_list:
+                    new_coords[self.dims.index(dim_aux)] = (
+                        dim_aux,
+                        [dim_name, self._coords[dim_aux].values[kw_isel]],
                     )
-                    new_slice = kwargs[dim_ref]
-                elif (
-                    isinstance(kwargs[dim_ref], np.ndarray)
-                    and kwargs[dim_ref].dtype == np.bool
-                ):
-                    mask = kwargs[dim_ref]
-                    new_coords.append(
-                        (name, [dim_ref, self._coords[name].values[mask]])
+                data_sel[dim_indx] = kw_isel
+            elif isinstance(kw_isel, np.ndarray) and kw_isel.dtype == np.bool:
+                new_coords[dim_indx] = (
+                    dim_name,
+                    self._coords[dim_name].values[kw_isel],
+                )
+                for dim_aux in dim_aux_list:
+                    new_coords[self.dims.index(dim_aux)] = (
+                        dim_aux,
+                        [dim_name, self._coords[dim_aux].values[kw_isel]],
                     )
-                    if name == dim_ref:  # only for dimension coordinates
-                        values = np.take(values, mask.nonzero()[0], axis=ix)
-                else:
-                    raise ValueError(f"{dim_ref}' should be slice or boolean array")
+                if self._coords[dim_name].is_dimension:
+                    values = np.take(values, kw_isel.nonzero()[0], axis=dim_indx)
             else:
-                new_coords.append((name, [dim_ref, self._coords[name].values]))
-            if name == dim_ref:  # only for dimension coordinates
-                data_sel += (new_slice,)
+                raise ValueError(f"{key}' should be slice or boolean array")
 
         return DataArray(
-            values[data_sel],
+            values[tuple(data_sel)],
             coords=new_coords,
             name=self.name,
             attrs=self.attrs,

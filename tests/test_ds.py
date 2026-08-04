@@ -22,7 +22,7 @@
 
 from __future__ import annotations
 
-import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -71,7 +71,6 @@ class TestDataset:
     def test_two(self: TestDataset, da_full: DataArray, da_ones: DataArray) -> None:
         """Unit-test for Dataset with two 3-D DataArray."""
         ds_two = Dataset({"foo": da_full, "bar": da_ones}, attrs={"title": "Dataset"})
-        print(ds_two)
         assert bool(ds_two)
         assert len(ds_two) == 2
         assert "bar" in ds_two
@@ -84,16 +83,17 @@ class TestDataset:
         assert "/GROUP" in ds_two.asdict("/GROUP")["groups"]
         assert "/GROUP/orbit" in ds_two.asdict("/GROUP")["dimensions"]
         assert "/GROUP/foo" in ds_two.asdict("/GROUP")["variables"]
-        temp_dir = Path(os.getenv("RUNNER_TEMP", "."))
-        ds_two.to_netcdf(temp_dir / "test_two1.nc")
-        ds_two.to_netcdf(temp_dir / "test_two2.nc", group="/GROUP")
-        ds_two.to_netcdf(
-            temp_dir / "test_two3.nc",
-            group="/GROUP",
-            attrs_group={
-                "/GROUP/title": "data from DataArrays 'da_full' and 'da_ones'"
-            },
-        )
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            path_tmpdir = Path(tmpdirname)
+            ds_two.to_netcdf(path_tmpdir / "test_two1.nc")
+            ds_two.to_netcdf(path_tmpdir / "test_two2.nc", group="/GROUP")
+            ds_two.to_netcdf(
+                path_tmpdir / "test_two3.nc",
+                group="/GROUP",
+                attrs_group={
+                    "/GROUP/title": "data from DataArrays 'da_full' and 'da_ones'"
+                },
+            )
 
     def test_creation(
         self: TestDataset, da_full: DataArray, da_ones: DataArray
