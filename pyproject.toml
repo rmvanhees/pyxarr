@@ -1,8 +1,8 @@
 # pyproject.toml
 [build-system]
 requires = [
-   "hatchling",
-   "versioningit",
+  "hatchling",
+  "versioningit",
 ]
 build-backend = "hatchling.build"
 
@@ -34,9 +34,14 @@ dependencies = [
   "numpy>=2.0",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest >= 9.0"]
-test = ["pytest-cov >= 7.0"]
+[dependency-groups]
+test = [
+  "pytest>=9.0",
+  "pytest-cov>=7.0",
+]
+lint = [
+  "ruff>=0.15",
+]
 
 [project.scripts]
 
@@ -46,6 +51,9 @@ Source = "https://github.com/rmvanhees/pyxarr"
 "Issue tracker" = "https://github.com/rmvanhees/pyxarr/issues"
 # Changelog = "https://github.com/rmvanhees/pyxarr/HISTORY.rst"
 # Documentation = "https://pyxarr.readthedocs.io/en/latest/"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["pilots"]
 
 [tool.hatch.version]
 source = "versioningit"
@@ -72,13 +80,16 @@ strict = true
 show_missing = true
 skip_empty = true
 exclude_also = [
-    # 1. Comments to turn coverage on and off:
-    'no cover: start(?s:.)*?no cover: stop',
+   # 1. Comments to turn coverage on and off:
+   'no cover: start(?s:.)*?no cover: stop',
 ]
 
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+exclude = [
+  "pilots",
+]
 
 [tool.ruff.lint]
 preview = false
