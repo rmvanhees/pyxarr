@@ -163,7 +163,7 @@ def __get_coords(
         for dim_dset in dim_scale.values():
             name = PosixPath(dim_dset.name).name
             # Tropomi CKD: remove specification of spectral band
-            if name.startswith("row") or name.startswith("column"):
+            if name.startswith(("row", "column")):
                 name = name.split(" ")[0]
             # print(name, dim_dset.shape, dim_dset.dtype)
 

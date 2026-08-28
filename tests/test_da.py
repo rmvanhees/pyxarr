@@ -241,7 +241,7 @@ class TestDataArray:
             res.concat(da_02, dim="X").values,
             da_00.concat((da_01, da_02), dim="X").values,
         )
-        with pytest.raises(ValueError, match=r".* DataArray .*") as excinfo:
+        with pytest.raises(TypeError, match=r".* DataArray .*") as excinfo:
             _ = res.concat([da_01, da_02], dim="X")
         assert "DataArray or tuple of DataArrays" in str(excinfo.value)
         with pytest.raises(ValueError, match=r"unknown dimension") as excinfo:

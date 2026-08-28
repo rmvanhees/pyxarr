@@ -171,7 +171,7 @@ class Dataset:
     def __setitem__(self: Dataset, name: str, xda: DataArray) -> None:
         """Add DataArray to Dataset."""
         if not isinstance(xda, DataArray):
-            raise ValueError("you can only add DataArrays to a Dataset")
+            raise TypeError("you can only add DataArrays to a Dataset")
 
         for coord in xda.get_coords:
             if coord not in self._coords:

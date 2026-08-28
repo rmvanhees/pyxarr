@@ -105,7 +105,7 @@ class TestDataset:
         ds_dict = Dataset({"foo": da_full, "bar": da_ones})
         # assert fails, because ds_add and ds_dict differ due to their attributes
         # assert ds_add == ds_dict
-        with pytest.raises(ValueError, match=r".* only add DataArrays .*") as excinfo:
+        with pytest.raises(TypeError, match=r".* only add DataArrays .*") as excinfo:
             ds_add["foo"] = np.ones((24, 1, 17))
         assert "you can only add DataArrays to a Dataset" in str(excinfo.value)
         assert sorted(ds_dict.attrs.keys()) == ["A", "B", "C", "D", "units"]

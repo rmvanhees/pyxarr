@@ -534,7 +534,7 @@ class DataArray:
     ) -> DataArray:
         """Concatenate DataArray objects along a new or existing dimension."""
         if not isinstance(objs, DataArray | tuple):
-            raise ValueError(
+            raise TypeError(
                 "first parameter must be a DataArray or tuple of DataArrays"
             )
         da_tuple = (self, *objs) if isinstance(objs, tuple) else (self, objs)
