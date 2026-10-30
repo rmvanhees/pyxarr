@@ -8,9 +8,9 @@ This is a package which provides a minimal and light-weight class to work with
 multi-dimensional labeled arrays.
 
 ## Description
-The software of `pyxarr` is written from scratch. 
+The software of `pyxarr` is written from scratch.
 I have tried to mimic the classes `DataArray`, `Dataset` and `Coords` from
-[xarray](https://xarray.dev/). 
+[xarray](https://xarray.dev/).
 My main goal is to keep the code light and fast.
 
 
@@ -19,7 +19,7 @@ Pyxarr is available as `pyxarr` on PyPI. To install it use `pip`:
 
 > $ pip install pyxarr
 
-The module `pyxarr` requires Python3.10+ and Python modules: h5py, numpy. 
+The module `pyxarr` requires Python3.10+ and Python modules: h5py, numpy.
 
 ## Usage
 
